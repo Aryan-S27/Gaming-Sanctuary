@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Gaming Sanctuary</title>
+  <meta name="description" content="Sign in or create an account at Gaming Sanctuary." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+
+<body>
+  <div class="auth-page">
+    <div class="card auth-card">
+
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🎮</div>
+        <h1 class="neon-text">Gaming Sanctuary</h1>
+        <p>Premium Gaming Lounge & Café</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs" id="auth-tabs">
+        <button class="tab-btn active" data-tab="login" id="tab-login">
+          Sign In
+        </button>
+        <button class="tab-btn" data-tab="signup" id="tab-signup">
+          Create Account
+        </button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="tab-panel active" id="panel-login">
+        <form id="login-form" autocomplete="on">
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email address</label>
+              <input class="input" type="email" id="login-email" name="email" placeholder="you@example.com"
+                autocomplete="email" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="login-password">Password</label>
+              <input class="input" type="password" id="login-password" name="password" placeholder="••••••••"
+                autocomplete="current-password" required />
+            </div>
+            <p class="error-msg" id="login-error"></p>
+            <button class="btn btn-primary btn-full btn-lg" type="submit" id="login-btn">
+              <i data-lucide="log-in"></i> Sign In
+            </button>
+          </div>
+        </form>
+        <p class="text-center text-sm text-muted mt-2">
+          Don't have an account?
+          <a href="#" id="goto-signup" style="color:var(--primary-l)">Sign up</a>
+        </p>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div class="tab-panel" id="panel-signup">
+        <form id="signup-form" autocomplete="on">
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <div class="form-group">
+              <label class="form-label" for="signup-name">Display name</label>
+              <input class="input" type="text" id="signup-name" name="name" placeholder="Your name" autocomplete="name"
+                required minlength="2" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-email">Email address</label>
+              <input class="input" type="email" id="signup-email" name="email" placeholder="you@example.com"
+                autocomplete="email" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-password">Password</label>
+              <input class="input" type="password" id="signup-password" name="password" placeholder="Min. 6 characters"
+                autocomplete="new-password" required minlength="6" />
+            </div>
+            <p class="error-msg" id="signup-error"></p>
+            <button class="btn btn-primary btn-full btn-lg" type="submit" id="signup-btn">
+              <i data-lucide="user-plus"></i> Create Account
+            </button>
+          </div>
+        </form>
+        <p class="text-center text-sm text-muted mt-2">
+          Already have an account?
+          <a href="#" id="goto-login" style="color:var(--primary-l)">Sign in</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, setLoading } from '/js/utils.js';
+
+    lucide.createIcons();
+
+    // ── Auto-redirect if already logged in ──────────────────────
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+      if (profile) {
+        window.location.href = profile.role === 'admin' ? '/admin/dashboard.html' : '/customer/dashboard.html';
+      }
+    })();
+
+    // ── Tab switching ────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+    }
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => switchTab(btn.dataset.tab));
+    document.getElementById('goto-signup').onclick = e => { e.preventDefault(); switchTab('signup'); };
+    document.getElementById('goto-login').onclick = e => { e.preventDefault(); switchTab('login'); };
+
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function clearError(id) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      el.classList.remove('show');
+    }
+
+    // ── Login ────────────────────────────────────────────────────
+    document.getElementById('login-form').onsubmit = async (e) => {
+      e.preventDefault();
+      clearError('login-error');
+      const btn = document.getElementById('login-btn');
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value;
+
+      setLoading(btn, true, 'Signing in…');
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) throw error;
+
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+        showToast('Welcome back!', 'success');
+        window.location.href = (profile?.role === 'admin') ? '/admin/dashboard.html' : '/customer/dashboard.html';
+      } catch (err) {
+        showError('login-error', err.message || 'Sign-in failed. Please try again.');
+        setLoading(btn, false);
+      }
+    };
+
+    // ── Sign Up ──────────────────────────────────────────────────
+    document.getElementById('signup-form').onsubmit = async (e) => {
+      e.preventDefault();
+      clearError('signup-error');
+      const btn = document.getElementById('signup-btn');
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const pass = document.getElementById('signup-password').value;
+
+      if (name.length < 2) { showError('signup-error', 'Name must be at least 2 characters.'); return; }
+      if (pass.length < 6) { showError('signup-error', 'Password must be at least 6 characters.'); return; }
+
+      setLoading(btn, true, 'Creating account…');
+      try {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password: pass,
+          options: { data: { name } }
+        });
+        if (error) throw error;
+        showToast('Account created! Redirecting…', 'success');
+        // Brief delay so the DB trigger can create the profile
+        await new Promise(r => setTimeout(r, 1500));
+        window.location.href = '/customer/dashboard.html';
+      } catch (err) {
+        showError('signup-error', err.message || 'Sign-up failed. Please try again.');
+        setLoading(btn, false);
+      }
+    };
+  </script>
+</body>
+
+</html>

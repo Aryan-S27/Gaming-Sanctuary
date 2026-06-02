@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Bookings — Gaming Sanctuary</title>
+  <meta name="description" content="View and manage your Gaming Sanctuary sessions." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout customer-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/customer/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Customer Portal</div></div>
+      </a>
+      <span class="sidebar-section-label">Menu</span>
+      <a href="/customer/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="/customer/book.html" class="nav-link"><i data-lucide="monitor-play"></i><span>Book a Rig</span></a>
+      <a href="/customer/bookings.html" class="nav-link active"><i data-lucide="calendar-check"></i><span>My Bookings</span></a>
+      <a href="/customer/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Café Menu</span></a>
+      <a href="/customer/orders.html" class="nav-link"><i data-lucide="receipt"></i><span>My Orders</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role">Customer</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="top-bar">
+      <div class="top-bar-logo">🎮 My Bookings</div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn-mobile"><i data-lucide="log-out"></i></button>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">My Bookings</h1>
+          <p class="page-subtitle">All your gaming sessions</p>
+        </div>
+        <a href="/customer/book.html" class="btn btn-primary">
+          <i data-lucide="plus"></i> New Booking
+        </a>
+      </div>
+
+      <div class="page-body">
+        <div id="bookings-list">
+          <div class="loading-state"><div class="spinner"></div> Loading bookings…</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <a href="/customer/dashboard.html" class="bottom-nav-item"><i data-lucide="layout-dashboard"></i>Home</a>
+      <a href="/customer/book.html" class="bottom-nav-item"><i data-lucide="monitor-play"></i>Book</a>
+      <a href="/customer/bookings.html" class="bottom-nav-item active"><i data-lucide="calendar-check"></i>Sessions</a>
+      <a href="/customer/menu.html" class="bottom-nav-item"><i data-lucide="utensils"></i>Menu</a>
+      <a href="/customer/orders.html" class="bottom-nav-item"><i data-lucide="receipt"></i>Orders</a>
+    </nav>
+
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDate, fmtTime, confirmDialog, avatarInitials, todayStr } from '/js/utils.js';
+
+    const auth = await requireAuth('customer');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    const handleLogout = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    document.getElementById('logout-btn').onclick = handleLogout;
+    document.getElementById('logout-btn-mobile').onclick = handleLogout;
+    lucide.createIcons();
+
+    const today = todayStr();
+
+    async function loadBookings() {
+      const el = document.getElementById('bookings-list');
+      el.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('id, date, start_time, end_time, rigs(name, type)')
+          .eq('user_id', profile.id)
+          .order('date', { ascending: false })
+          .order('start_time', { ascending: false });
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          el.innerHTML = `
+            <div class="empty-state">
+              <span class="empty-state-icon">📅</span>
+              <h3>No bookings yet</h3>
+              <p>Book your first gaming session!</p>
+              <a href="/customer/book.html" class="btn btn-primary mt-2"><i data-lucide="plus"></i> Book a Rig</a>
+            </div>`;
+          lucide.createIcons();
+          return;
+        }
+
+        // Group by upcoming / past
+        const upcoming = data.filter(b => b.date >= today);
+        const past     = data.filter(b => b.date < today);
+
+        function renderGroup(list, label) {
+          if (!list.length) return '';
+          return `
+            <div style="margin-bottom:1.5rem">
+              <h3 style="font-size:0.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">${label}</h3>
+              <div style="display:flex;flex-direction:column;gap:0.75rem">
+                ${list.map(b => {
+                  const isFuture = b.date >= today;
+                  const typeClass = b.rigs?.type === 'PC' ? 'badge-purple' : 'badge-teal';
+                  return `
+                    <div class="booking-row">
+                      <div style="width:44px;height:44px;border-radius:var(--radius);background:${isFuture ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem">
+                        ${b.rigs?.type === 'PC' ? '🖥️' : '🎮'}
+                      </div>
+                      <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+                          <span class="booking-rig">${b.rigs?.name ?? 'Rig'}</span>
+                          <span class="badge ${typeClass}">${b.rigs?.type ?? ''}</span>
+                          ${isFuture ? '<span class="badge badge-green">Upcoming</span>' : '<span class="badge badge-gray">Completed</span>'}
+                        </div>
+                        <div class="booking-meta mt-1">
+                          <i data-lucide="calendar" style="width:12px;height:12px;display:inline;vertical-align:middle"></i> ${fmtDate(b.date)} &nbsp;·&nbsp;
+                          <i data-lucide="clock" style="width:12px;height:12px;display:inline;vertical-align:middle"></i> ${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}
+                        </div>
+                      </div>
+                      ${isFuture ? `<button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.id}, '${b.date}')"><i data-lucide="x"></i> Cancel</button>` : ''}
+                    </div>`;
+                }).join('')}
+              </div>
+            </div>`;
+        }
+
+        el.innerHTML = renderGroup(upcoming, 'Upcoming') + renderGroup(past, 'Past Sessions');
+        lucide.createIcons();
+      } catch (err) {
+        showToast(err.message, 'error');
+        el.innerHTML = `<div class="empty-state"><h3>Failed to load bookings</h3><p class="text-muted">${err.message}</p></div>`;
+      }
+    }
+
+    window.cancelBooking = async (id, date) => {
+      if (date < today) return;
+      const ok = await confirmDialog('Cancel this booking?<br><small>This cannot be undone.</small>', 'Cancel Booking');
+      if (!ok) return;
+      try {
+        const { error } = await supabase.from('bookings').delete().eq('id', id);
+        if (error) throw error;
+        showToast('Booking cancelled', 'success');
+        await loadBookings();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    await loadBookings();
+  </script>
+</body>
+</html>

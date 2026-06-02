@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Orders — Gaming Sanctuary</title>
+  <meta name="description" content="Your café order history at Gaming Sanctuary." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout customer-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/customer/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Customer Portal</div></div>
+      </a>
+      <span class="sidebar-section-label">Menu</span>
+      <a href="/customer/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="/customer/book.html" class="nav-link"><i data-lucide="monitor-play"></i><span>Book a Rig</span></a>
+      <a href="/customer/bookings.html" class="nav-link"><i data-lucide="calendar-check"></i><span>My Bookings</span></a>
+      <a href="/customer/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Café Menu</span></a>
+      <a href="/customer/orders.html" class="nav-link active"><i data-lucide="receipt"></i><span>My Orders</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role">Customer</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="top-bar">
+      <div class="top-bar-logo">🎮 My Orders</div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn-mobile"><i data-lucide="log-out"></i></button>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">My Orders</h1>
+          <p class="page-subtitle">Your café order history</p>
+        </div>
+        <a href="/customer/menu.html" class="btn btn-primary">
+          <i data-lucide="utensils"></i> Order Again
+        </a>
+      </div>
+
+      <div class="page-body">
+        <div id="orders-list">
+          <div class="loading-state"><div class="spinner"></div> Loading orders…</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <a href="/customer/dashboard.html" class="bottom-nav-item"><i data-lucide="layout-dashboard"></i>Home</a>
+      <a href="/customer/book.html" class="bottom-nav-item"><i data-lucide="monitor-play"></i>Book</a>
+      <a href="/customer/bookings.html" class="bottom-nav-item"><i data-lucide="calendar-check"></i>Sessions</a>
+      <a href="/customer/menu.html" class="bottom-nav-item"><i data-lucide="utensils"></i>Menu</a>
+      <a href="/customer/orders.html" class="bottom-nav-item active"><i data-lucide="receipt"></i>Orders</a>
+    </nav>
+
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtPrice, fmtDateTime, confirmDialog, orderStatusBadge, avatarInitials } from '/js/utils.js';
+
+    const auth = await requireAuth('customer');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    const handleLogout = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    document.getElementById('logout-btn').onclick = handleLogout;
+    document.getElementById('logout-btn-mobile').onclick = handleLogout;
+    lucide.createIcons();
+
+    async function loadOrders() {
+      const el = document.getElementById('orders-list');
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          el.innerHTML = `
+            <div class="empty-state">
+              <span class="empty-state-icon">🍔</span>
+              <h3>No orders yet</h3>
+              <p>Order some food or drinks from the café!</p>
+              <a href="/customer/menu.html" class="btn btn-primary mt-2"><i data-lucide="utensils"></i> Browse Menu</a>
+            </div>`;
+          lucide.createIcons();
+          return;
+        }
+
+        el.innerHTML = `<div style="display:flex;flex-direction:column;gap:1rem">` +
+          data.map(order => {
+            const items   = Array.isArray(order.items) ? order.items : [];
+            const itemSummary = items.slice(0,3).map(i => `${i.name} ×${i.qty}`).join(', ') + (items.length > 3 ? ` +${items.length-3} more` : '');
+            const delivBadge = order.delivery_type === 'rig_delivery'
+              ? `<span class="badge badge-purple">🎮 Rig ${order.rig_number || ''}</span>`
+              : `<span class="badge badge-teal">🥡 Pickup</span>`;
+            return `
+              <div class="card" style="padding:1.25rem">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.875rem">
+                  <div>
+                    <div style="font-weight:700;font-size:0.9rem;color:var(--primary-l)">Order #${order.id}</div>
+                    <div class="text-muted text-xs">${fmtDateTime(order.created_at)}</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+                    ${delivBadge}
+                    ${orderStatusBadge(order.status)}
+                  </div>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:0.875rem">
+                  <p class="text-sm" style="color:var(--muted-l);margin-bottom:0.75rem">${itemSummary}</p>
+                  <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem">
+                    ${items.map(i => `<span class="badge badge-gray">${i.name} ×${i.qty}</span>`).join('')}
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span class="text-muted text-sm">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+                    <span style="font-weight:800;font-size:1.05rem;color:var(--primary-l)">${fmtPrice(order.total)}</span>
+                  </div>
+                </div>
+              </div>`;
+          }).join('') + `</div>`;
+        lucide.createIcons();
+      } catch (err) {
+        showToast(err.message, 'error');
+        el.innerHTML = `<div class="empty-state"><h3>Failed to load</h3><p class="text-muted">${err.message}</p></div>`;
+      }
+    }
+
+    await loadOrders();
+  </script>
+</body>
+</html>

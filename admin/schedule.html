@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Schedule — Gaming Sanctuary Admin</title>
+  <meta name="description" content="Real-time booking timeline for Gaming Sanctuary." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .timeline-cell .cell-label { font-size:0.6rem; color:var(--primary-l); }
+    .date-nav { display:flex; align-items:center; gap:0.75rem; }
+    .date-display { font-weight:700; font-size:0.95rem; min-width:200px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="app-layout admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/admin/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Admin Panel</div></div>
+      </a>
+      <span class="sidebar-section-label">Overview</span>
+      <a href="/admin/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <span class="sidebar-section-label">Operations</span>
+      <a href="/admin/schedule.html" class="nav-link active"><i data-lucide="calendar-range"></i><span>Schedule</span></a>
+      <a href="/admin/walk-in.html" class="nav-link"><i data-lucide="user-plus"></i><span>Walk-In</span></a>
+      <a href="/admin/rigs.html" class="nav-link"><i data-lucide="monitor"></i><span>Rigs</span></a>
+      <a href="/admin/orders.html" class="nav-link"><i data-lucide="chef-hat"></i><span>Kitchen (KDS)</span></a>
+      <a href="/admin/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Menu Items</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role" style="color:var(--amber)">Admin</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Live Schedule</h1>
+          <p class="page-subtitle">Booking timeline — updates in real time</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <button class="btn btn-icon" id="prev-day"><i data-lucide="chevron-left"></i></button>
+          <span id="date-display" style="font-weight:700;font-family:monospace;width:120px;text-align:center"></span>
+          <button class="btn btn-icon" id="next-day"><i data-lucide="chevron-right"></i></button>
+          <button class="btn btn-primary" id="walk-in-btn"><i data-lucide="user-plus"></i> Walk-In</button>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <!-- Legend -->
+        <div class="legend mb-2">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(16,185,129,0.2);border:1px solid var(--green)"></div>Available</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(124,58,237,0.3);border:1px solid var(--primary)"></div>Booked</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.1);border:1px solid var(--red)"></div>Maintenance</div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="schedule-grid">
+            <div class="loading-state"><div class="spinner"></div> Loading schedule…</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Booking Detail Modal -->
+  <div class="modal-overlay hidden" id="detail-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Booking Details</span>
+        <button class="modal-close" onclick="document.getElementById('detail-modal').classList.add('hidden')"><i data-lucide="x"></i></button>
+      </div>
+      <div id="detail-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('detail-modal').classList.add('hidden')">Close</button>
+        <button class="btn btn-danger" id="cancel-booking-btn"><i data-lucide="trash-2"></i> Cancel Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Walk-In Modal -->
+  <div class="modal-overlay hidden" id="walkin-modal">
+    <div class="modal modal-lg" style="max-width: 900px; width: 95%;">
+      <div class="modal-header">
+        <span class="modal-title"><i data-lucide="user-plus"></i> Walk-In Booking</span>
+        <button class="modal-close" onclick="closeWalkin()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label class="form-label">Customer Name</label>
+          <input class="input" type="text" id="wi-name" placeholder="Walk-in customer name" />
+        </div>
+        
+        <label class="form-label mb-1">Select Time Slot</label>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="walkin-grid-container"></div>
+        </div>
+
+        <div id="wi-pending-row" class="hidden confirmation-box">
+          <div class="confirmation-row"><strong>Rig</strong> <span id="wi-rig-name"></span></div>
+          <div class="confirmation-row" style="align-items:center">
+            <strong>Start</strong> 
+            <input type="time" id="wi-start-input" class="input" style="padding:0.2rem 0.5rem;width:auto;height:auto;font-family:monospace;color:var(--primary-l);background:var(--surface)">
+          </div>
+          <div class="confirmation-row" style="align-items:center">
+            <strong>End</strong> 
+            <input type="time" id="wi-end-input" class="input" style="padding:0.2rem 0.5rem;width:auto;height:auto;font-family:monospace;color:var(--primary-l);background:var(--surface)">
+          </div>
+          <div class="confirmation-row" style="align-items:center"><strong>Duration</strong> <span id="wi-dur" style="color:var(--teal)"></span></div>
+        </div>
+        <p class="error-msg" id="wi-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeWalkin()">Cancel</button>
+        <button class="btn btn-primary" id="wi-confirm" disabled><i data-lucide="check"></i> Confirm Walk-In</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDate, fmtTime, confirmDialog, checkOverlap, setLoading, avatarInitials, todayStr } from '/js/utils.js';
+    import { renderTimelineGrid, minToTime, timeToMin, fmtDuration } from '/js/timeline.js';
+
+    const auth = await requireAuth('admin');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    lucide.createIcons();
+
+    let currentDate = todayStr();
+    let allRigs = [];
+    let bookingsMap = {};
+    let selectedBookingId = null;
+    let pendingWalkIn = null; // { rigId, start, end }
+
+    // ── Date nav ─────────────────────────────────────────────────
+    function offsetDate(dateStr, days) {
+      const d = new Date(dateStr);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+    function updateDateDisplay() {
+      document.getElementById('date-display').textContent = fmtDate(currentDate);
+    }
+    document.getElementById('prev-day').onclick = () => { currentDate = offsetDate(currentDate, -1); updateDateDisplay(); loadData(); };
+    document.getElementById('next-day').onclick = () => { currentDate = offsetDate(currentDate,  1); updateDateDisplay(); loadData(); };
+    updateDateDisplay();
+
+    // ── Load data ───────────────────────────────────────────
+    async function loadData() {
+      document.getElementById('schedule-grid').innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+      
+      const [rigsRes, bookingsRes] = await Promise.all([
+        supabase.from('rigs').select('*').order('id'),
+        supabase.from('bookings').select('id, rig_id, start_time, end_time, notes, profiles(name, id)').eq('date', currentDate).order('start_time')
+      ]);
+
+      if (rigsRes.error)     { showToast(rigsRes.error.message, 'error'); return; }
+      if (bookingsRes.error) { showToast(bookingsRes.error.message, 'error'); return; }
+
+      allRigs = rigsRes.data || [];
+      bookingsMap = {};
+      for (const b of (bookingsRes.data || [])) {
+        if (!bookingsMap[b.rig_id]) bookingsMap[b.rig_id] = [];
+        bookingsMap[b.rig_id].push(b);
+      }
+      
+      renderMainSchedule();
+      
+      // If walkin modal is open, refresh its grid too
+      if (!document.getElementById('walkin-modal').classList.contains('hidden')) {
+        renderWalkinGrid();
+      }
+    }
+
+    function renderMainSchedule() {
+      const container = document.getElementById('schedule-grid');
+      renderTimelineGrid(container, {
+        date: currentDate,
+        rigs: allRigs,
+        bookingsMap: bookingsMap,
+        mode: 'admin',
+        onSelect: null, // Read-only on main screen
+        onBookingClick: (booking, rig) => openDetailModal(booking, rig, currentDate)
+      });
+    }
+
+    // ── Detail modal ─────────────────────────────────────────────
+    function openDetailModal(booking, rig, dateStr) {
+      selectedBookingId = booking.id;
+      const isWalkIn = !!booking.notes;
+      const customerName = isWalkIn ? `${booking.notes} (Walk-in)` : (booking.profiles?.name || 'Customer');
+      document.getElementById('detail-body').innerHTML = `
+        <div class="card" style="background:var(--surface2);padding:1rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.875rem">
+            <div><span class="text-muted">Customer</span><br><strong>${customerName}</strong></div>
+            <div><span class="text-muted">Rig</span><br><strong>${rig.name} (${rig.type})</strong></div>
+            <div><span class="text-muted">Date</span><br><strong>${fmtDate(dateStr)}</strong></div>
+            <div><span class="text-muted">Time</span><br><strong>${fmtTime(booking.start_time)} – ${fmtTime(booking.end_time)}</strong></div>
+          </div>
+        </div>`;
+      document.getElementById('detail-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    document.getElementById('cancel-booking-btn').onclick = async () => {
+      if (!selectedBookingId) return;
+      const ok = await confirmDialog('Cancel this booking?', 'Cancel Booking');
+      if (!ok) return;
+      try {
+        const { error } = await supabase.from('bookings').delete().eq('id', selectedBookingId);
+        if (error) throw error;
+        showToast('Booking cancelled', 'success');
+        document.getElementById('detail-modal').classList.add('hidden');
+        await loadData();
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    // ── Walk-In Modal ────────────────────────────────────────────
+    window.closeWalkin = () => {
+      document.getElementById('walkin-modal').classList.add('hidden');
+      pendingWalkIn = null;
+    };
+
+    document.getElementById('walk-in-btn').onclick = () => {
+      document.getElementById('wi-name').value = '';
+      document.getElementById('wi-error').classList.remove('show');
+      document.getElementById('wi-confirm').disabled = true;
+      document.getElementById('wi-pending-row').classList.add('hidden');
+      pendingWalkIn = null;
+      document.getElementById('walkin-modal').classList.remove('hidden');
+      renderWalkinGrid();
+      lucide.createIcons();
+    };
+
+    const wiStartInput = document.getElementById('wi-start-input');
+    const wiEndInput   = document.getElementById('wi-end-input');
+    const wiDurSpan    = document.getElementById('wi-dur');
+
+    function updateWalkinSelectionFromInputs() {
+      if (!pendingWalkIn) return;
+      const sMin = timeToMin(wiStartInput.value);
+      const eMin = timeToMin(wiEndInput.value);
+      
+      if (eMin > sMin) {
+        pendingWalkIn.start = sMin;
+        pendingWalkIn.end = eMin;
+        wiDurSpan.textContent = fmtDuration(eMin - sMin);
+        renderWalkinGrid();
+      } else {
+        wiDurSpan.textContent = 'Invalid duration';
+      }
+    }
+
+    wiStartInput.onchange = updateWalkinSelectionFromInputs;
+    wiEndInput.onchange = updateWalkinSelectionFromInputs;
+
+    function renderWalkinGrid() {
+      const container = document.getElementById('walkin-grid-container');
+      renderTimelineGrid(container, {
+        date: currentDate,
+        rigs: allRigs,
+        bookingsMap: bookingsMap,
+        mode: 'walkin',
+        selection: pendingWalkIn,
+        onSelect: (rigId, start, end) => {
+          if (!rigId) {
+            pendingWalkIn = null;
+            document.getElementById('wi-confirm').disabled = true;
+            document.getElementById('wi-pending-row').classList.add('hidden');
+            renderWalkinGrid();
+            return;
+          }
+          const rig = allRigs.find(r => r.id === rigId);
+          pendingWalkIn = { rigId, rigName: rig.name, rigType: rig.type, start, end };
+          
+          document.getElementById('wi-rig-name').textContent = `${rig.name} (${rig.type})`;
+          
+          wiStartInput.value = minToTime(start);
+          wiEndInput.value   = minToTime(end);
+          wiDurSpan.textContent = fmtDuration(end - start);
+          
+          document.getElementById('wi-confirm').disabled = false;
+          document.getElementById('wi-pending-row').classList.remove('hidden');
+          renderWalkinGrid();
+        }
+      });
+    }
+
+    document.getElementById('wi-confirm').onclick = async () => {
+      const btn   = document.getElementById('wi-confirm');
+      const name  = document.getElementById('wi-name').value.trim();
+      const errEl = document.getElementById('wi-error');
+      errEl.classList.remove('show');
+
+      if (!name) { errEl.textContent = 'Customer name is required.'; errEl.classList.add('show'); return; }
+      if (!pendingWalkIn) { errEl.textContent = 'Please select a time slot on the grid.'; errEl.classList.add('show'); return; }
+
+      const startStr = minToTime(pendingWalkIn.start) + ':00';
+      const endStr   = minToTime(pendingWalkIn.end) + ':00';
+      const rigId    = pendingWalkIn.rigId;
+
+      setLoading(btn, true, 'Booking…');
+      try {
+        const overlap = await checkOverlap(rigId, currentDate, startStr, endStr);
+        if (overlap) { errEl.textContent = 'Time slot is already booked.'; errEl.classList.add('show'); setLoading(btn, false); return; }
+
+        const { error } = await supabase.from('bookings').insert({
+          rig_id:     rigId,
+          user_id:    profile.id,
+          date:       currentDate,
+          start_time: startStr,
+          end_time:   endStr,
+          notes:      name,
+        });
+        if (error) throw error;
+        closeWalkin();
+        showToast(`Walk-in booked for ${name}`, 'success');
+        await loadData();
+        setLoading(btn, false);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.add('show');
+        setLoading(btn, false);
+      }
+    };
+
+    // ── Realtime subscription ────────────────────────────────────
+    supabase.channel('admin-bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    await loadData();
+  </script>
+</body>
+</html>

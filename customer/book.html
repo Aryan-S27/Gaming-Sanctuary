@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book a Rig — Gaming Sanctuary</title>
+  <meta name="description" content="Book your gaming rig session at Gaming Sanctuary." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout customer-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/customer/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Customer Portal</div></div>
+      </a>
+      <span class="sidebar-section-label">Menu</span>
+      <a href="/customer/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="/customer/book.html" class="nav-link active"><i data-lucide="monitor-play"></i><span>Book a Rig</span></a>
+      <a href="/customer/bookings.html" class="nav-link"><i data-lucide="calendar-check"></i><span>My Bookings</span></a>
+      <a href="/customer/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Café Menu</span></a>
+      <a href="/customer/orders.html" class="nav-link"><i data-lucide="receipt"></i><span>My Orders</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role">Customer</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="top-bar">
+      <div class="top-bar-logo">🎮 Book a Rig</div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn-mobile"><i data-lucide="log-out"></i></button>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Book a Rig</h1>
+          <p class="page-subtitle">Select a date and click an available slot to book</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+          <label class="form-label" style="margin:0;white-space:nowrap">Session date:</label>
+          <input type="date" class="input" id="date-picker" style="width:auto" />
+        </div>
+      </div>
+
+      <div class="page-body">
+        <!-- Legend -->
+        <div class="legend mb-2">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(16,185,129,0.3);border:1px solid var(--green)"></div>Available</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.25);border:1px solid var(--red)"></div>Booked</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(100,116,139,0.2);border:1px solid var(--muted)"></div>Maintenance</div>
+        </div>
+
+        <!-- Availability grid -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="grid-container">
+            <div class="loading-state"><div class="spinner"></div> Loading availability…</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <a href="/customer/dashboard.html" class="bottom-nav-item"><i data-lucide="layout-dashboard"></i>Home</a>
+      <a href="/customer/book.html" class="bottom-nav-item active"><i data-lucide="monitor-play"></i>Book</a>
+      <a href="/customer/bookings.html" class="bottom-nav-item"><i data-lucide="calendar-check"></i>Sessions</a>
+      <a href="/customer/menu.html" class="bottom-nav-item"><i data-lucide="utensils"></i>Menu</a>
+      <a href="/customer/orders.html" class="bottom-nav-item"><i data-lucide="receipt"></i>Orders</a>
+    </nav>
+
+  </div>
+
+  <!-- Booking Modal -->
+  <div class="modal-overlay hidden" id="book-modal">
+    <div class="modal" style="max-width: 420px">
+      <div class="modal-header">
+        <span class="modal-title" style="display:flex;align-items:center;gap:0.5rem;text-transform:uppercase;letter-spacing:0.05em">
+          <i data-lucide="monitor-play" style="color:var(--primary)"></i> Confirm Session
+        </span>
+        <button class="modal-close" id="modal-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="card" style="background:var(--surface2);padding:1rem;margin-bottom:0.5rem;font-family:monospace">
+          <div class="confirmation-row"><strong>Rig</strong> <span id="modal-rig-name" style="text-transform:uppercase"></span></div>
+          <div class="confirmation-row"><strong>Date</strong> <span id="modal-date"></span></div>
+          <div class="confirmation-row" style="align-items:center">
+            <strong>Start</strong> 
+            <input type="time" id="modal-start-input" class="input" style="padding:0.2rem 0.5rem;width:auto;height:auto;font-family:monospace;color:var(--primary-l);background:var(--surface)">
+          </div>
+          <div class="confirmation-row" style="align-items:center">
+            <strong>End</strong> 
+            <input type="time" id="modal-end-input" class="input" style="padding:0.2rem 0.5rem;width:auto;height:auto;font-family:monospace;color:var(--primary-l);background:var(--surface)">
+          </div>
+          <div class="confirmation-row" style="align-items:center"><strong>Duration</strong> <span id="modal-dur" style="color:var(--teal)"></span></div>
+        </div>
+        <p class="error-msg" id="modal-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="modal-cancel" style="font-family:monospace;text-transform:uppercase;font-size:0.75rem">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm" style="font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:0.75rem;box-shadow:var(--glow)">Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDate, fmtTime, confirmDialog, checkOverlap, setLoading, avatarInitials, todayStr } from '/js/utils.js';
+    import { renderTimelineGrid, minToTime, timeToMin, fmtDuration } from '/js/timeline.js';
+
+    const auth = await requireAuth('customer');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    document.getElementById('logout-btn-mobile').onclick = document.getElementById('logout-btn').onclick;
+
+    // ── Date picker ──────────────────────────────────────────────
+    const datePicker = document.getElementById('date-picker');
+    datePicker.min = todayStr();
+    datePicker.value = todayStr();
+
+    let allRigs     = [];
+    let bookingsMap = {}; // rigId → [{ start_time, end_time }]
+    let pendingSel  = null; // { rigId, start, end }
+
+    // ── Load data & render grid ──────────────────────────────────
+    async function loadGrid(dateStr) {
+      document.getElementById('grid-container').innerHTML =
+        '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+
+      const [rigsRes, bookingsRes] = await Promise.all([
+        supabase.from('rigs').select('*').order('id'),
+        supabase.from('bookings').select('id, rig_id, start_time, end_time').eq('date', dateStr),
+      ]);
+      if (rigsRes.error)     { showToast(rigsRes.error.message, 'error'); return; }
+      if (bookingsRes.error) { showToast(bookingsRes.error.message, 'error'); return; }
+
+      allRigs = rigsRes.data || [];
+      bookingsMap = {};
+      for (const b of (bookingsRes.data || [])) {
+        if (!bookingsMap[b.rig_id]) bookingsMap[b.rig_id] = [];
+        bookingsMap[b.rig_id].push(b);
+      }
+      refreshGrid();
+    }
+
+    function refreshGrid() {
+      const container = document.getElementById('grid-container');
+      renderTimelineGrid(container, {
+        date: datePicker.value,
+        rigs: allRigs,
+        bookingsMap,
+        selection: pendingSel,
+        mode: 'customer',
+        onSelect: (rigId, start, end) => {
+          if (!rigId) {
+            pendingSel = null;
+            refreshGrid();
+            return;
+          }
+          const rig = allRigs.find(r => r.id === rigId);
+          pendingSel = { rigId, rigName: rig.name, rigType: rig.type, start, end };
+          refreshGrid();
+          openConfirmModal();
+        }
+      });
+    }
+
+    datePicker.onchange = () => { pendingSel = null; loadGrid(datePicker.value); };
+    await loadGrid(datePicker.value);
+
+    // ── Booking Modal ────────────────────────────────────────────
+    const startInput = document.getElementById('modal-start-input');
+    const endInput   = document.getElementById('modal-end-input');
+    const durSpan    = document.getElementById('modal-dur');
+
+    function openConfirmModal() {
+      if (!pendingSel) return;
+      document.getElementById('modal-rig-name').textContent = `${pendingSel.rigName} (${pendingSel.rigType})`;
+      document.getElementById('modal-date').textContent     = new Date(datePicker.value).toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+      
+      startInput.value = minToTime(pendingSel.start);
+      endInput.value   = minToTime(pendingSel.end);
+      durSpan.textContent = fmtDuration(pendingSel.end - pendingSel.start);
+      
+      document.getElementById('modal-error').classList.remove('show');
+      document.getElementById('book-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function updateSelectionFromInputs() {
+      if (!pendingSel) return;
+      const sMin = timeToMin(startInput.value);
+      const eMin = timeToMin(endInput.value);
+      
+      if (eMin > sMin) {
+        pendingSel.start = sMin;
+        pendingSel.end = eMin;
+        durSpan.textContent = fmtDuration(eMin - sMin);
+        refreshGrid();
+      } else {
+        durSpan.textContent = 'Invalid duration';
+      }
+    }
+
+    startInput.onchange = updateSelectionFromInputs;
+    endInput.onchange = updateSelectionFromInputs;
+
+    const closeModal = () => { 
+      document.getElementById('book-modal').classList.add('hidden'); 
+      pendingSel = null;
+      refreshGrid();
+    };
+    
+    document.getElementById('modal-close').onclick  = closeModal;
+    document.getElementById('modal-cancel').onclick = closeModal;
+    document.getElementById('book-modal').onclick = e => { if (e.target.id === 'book-modal') closeModal(); };
+
+    document.getElementById('modal-confirm').onclick = async () => {
+      const btn = document.getElementById('modal-confirm');
+      const errEl = document.getElementById('modal-error');
+      errEl.classList.remove('show');
+
+      const startTime = minToTime(pendingSel.start) + ':00';
+      const endTime = minToTime(pendingSel.end) + ':00';
+      const date = datePicker.value;
+      const rigId = pendingSel.rigId;
+
+      setLoading(btn, true, 'Locking In...');
+      try {
+        const overlap = await checkOverlap(rigId, date, startTime, endTime);
+        if (overlap) {
+          errEl.textContent = 'This slot overlaps with an existing booking.';
+          errEl.classList.add('show');
+          setLoading(btn, false);
+          return;
+        }
+        const { error } = await supabase.from('bookings').insert({
+          rig_id:     rigId,
+          user_id:    profile.id,
+          date:       date,
+          start_time: startTime,
+          end_time:   endTime,
+        });
+        if (error) throw error;
+        
+        const msg = `Session locked: ${pendingSel.rigName} · ${fmtTime(minToTime(pendingSel.start))}–${fmtTime(minToTime(pendingSel.end))}`;
+        closeModal();
+        showToast(msg, 'success');
+        await loadGrid(datePicker.value);
+        setLoading(btn, false);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.add('show');
+        setLoading(btn, false);
+      }
+    };
+  </script>
+</body>
+</html>

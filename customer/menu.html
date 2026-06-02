@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Café Menu — Gaming Sanctuary</title>
+  <meta name="description" content="Order drinks, food and snacks at Gaming Sanctuary's café." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    /* Extra cart total area */
+    .cart-total-row { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; font-size:0.875rem; }
+    .cart-total-row.big { font-size:1.1rem; font-weight:700; border-top:1px solid var(--border); padding-top:0.75rem; }
+    .rig-input-wrap { display:none; margin-top:0.75rem; }
+    .rig-input-wrap.show { display:block; }
+  </style>
+</head>
+<body>
+  <div class="app-layout customer-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/customer/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Customer Portal</div></div>
+      </a>
+      <span class="sidebar-section-label">Menu</span>
+      <a href="/customer/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="/customer/book.html" class="nav-link"><i data-lucide="monitor-play"></i><span>Book a Rig</span></a>
+      <a href="/customer/bookings.html" class="nav-link"><i data-lucide="calendar-check"></i><span>My Bookings</span></a>
+      <a href="/customer/menu.html" class="nav-link active"><i data-lucide="utensils"></i><span>Café Menu</span></a>
+      <a href="/customer/orders.html" class="nav-link"><i data-lucide="receipt"></i><span>My Orders</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role">Customer</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="top-bar">
+      <div class="top-bar-logo">🎮 Café Menu</div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn-mobile"><i data-lucide="log-out"></i></button>
+    </header>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Café Menu</h1>
+          <p class="page-subtitle">Fuel your session with our selection</p>
+        </div>
+        <!-- Cart FAB trigger (desktop) -->
+        <button class="btn btn-primary" id="open-cart-btn" style="position:relative">
+          <i data-lucide="shopping-cart"></i> Cart
+          <span class="cart-count-badge" id="cart-badge-header">0</span>
+        </button>
+      </div>
+
+      <div class="page-body">
+        <!-- Category tabs -->
+        <div class="tabs" id="category-tabs">
+          <button class="tab-btn active" data-cat="all">All</button>
+          <button class="tab-btn" data-cat="drinks">🥤 Drinks</button>
+          <button class="tab-btn" data-cat="food">🍔 Food</button>
+          <button class="tab-btn" data-cat="snacks">🍟 Snacks</button>
+        </div>
+
+        <!-- Menu grid -->
+        <div id="menu-grid" class="menu-grid">
+          <div class="loading-state"><div class="spinner"></div> Loading menu…</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <a href="/customer/dashboard.html" class="bottom-nav-item"><i data-lucide="layout-dashboard"></i>Home</a>
+      <a href="/customer/book.html" class="bottom-nav-item"><i data-lucide="monitor-play"></i>Book</a>
+      <a href="/customer/bookings.html" class="bottom-nav-item"><i data-lucide="calendar-check"></i>Sessions</a>
+      <a href="/customer/menu.html" class="bottom-nav-item active"><i data-lucide="utensils"></i>Menu</a>
+      <a href="/customer/orders.html" class="bottom-nav-item"><i data-lucide="receipt"></i>Orders</a>
+    </nav>
+  </div>
+
+  <!-- Cart FAB (mobile) -->
+  <div class="cart-fab">
+    <button class="cart-fab-btn" id="cart-fab-btn">
+      <i data-lucide="shopping-cart"></i>
+      <span class="cart-count-badge" id="cart-badge-fab">0</span>
+    </button>
+  </div>
+
+  <!-- Cart Panel -->
+  <div class="cart-overlay" id="cart-overlay"></div>
+  <div class="cart-panel" id="cart-panel">
+    <div class="cart-header">
+      <h2 style="font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:0.5rem">
+        <i data-lucide="shopping-cart"></i> Your Cart
+      </h2>
+      <button class="modal-close" id="close-cart"><i data-lucide="x"></i></button>
+    </div>
+    <div class="cart-body" id="cart-body">
+      <div class="empty-state">
+        <span class="empty-state-icon">🛒</span>
+        <h3>Cart is empty</h3>
+        <p>Add items from the menu</p>
+      </div>
+    </div>
+    <div class="cart-footer" id="cart-footer" style="display:none">
+      <!-- Totals -->
+      <div id="cart-totals"></div>
+
+      <div class="separator"></div>
+
+      <!-- Delivery options -->
+      <p style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.6rem">Delivery method</p>
+      <div class="delivery-options">
+        <label class="delivery-option selected" id="opt-delivery" onclick="selectDelivery('rig_delivery')">
+          <div class="delivery-icon">🎮</div>
+          <div class="delivery-label">Deliver to Rig</div>
+        </label>
+        <label class="delivery-option" id="opt-pickup" onclick="selectDelivery('pickup')">
+          <div class="delivery-icon">🥡</div>
+          <div class="delivery-label">Pickup</div>
+        </label>
+      </div>
+
+      <div class="rig-input-wrap show" id="rig-input-wrap">
+        <input class="input" type="text" id="rig-number-input" placeholder="Your rig number (e.g. Rig 01)" />
+      </div>
+
+      <p class="error-msg mt-1" id="checkout-error"></p>
+      <button class="btn btn-primary btn-full mt-2" id="checkout-btn">
+        <i data-lucide="check-circle"></i> Place Order
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtPrice, confirmDialog, setLoading, avatarInitials } from '/js/utils.js';
+
+    const auth = await requireAuth('customer');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    const handleLogout = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    document.getElementById('logout-btn').onclick = handleLogout;
+    document.getElementById('logout-btn-mobile').onclick = handleLogout;
+    lucide.createIcons();
+
+    // ── State ────────────────────────────────────────────────────
+    let allItems = [];
+    let cart = [];        // { id, name, price, qty }
+    let deliveryType = 'rig_delivery';
+    let activeCategory = 'all';
+
+    const CATEGORY_ICONS = { drinks: '🥤', food: '🍔', snacks: '🍟' };
+
+    // ── Load Menu ────────────────────────────────────────────────
+    async function loadMenu() {
+      const { data, error } = await supabase.from('menu_items').select('*').eq('available', true).order('category').order('name');
+      if (error) { showToast(error.message, 'error'); return; }
+      allItems = data || [];
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const grid = document.getElementById('menu-grid');
+      const items = activeCategory === 'all' ? allItems : allItems.filter(i => i.category === activeCategory);
+      if (!items.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><span class="empty-state-icon">${CATEGORY_ICONS[activeCategory] || '🍽️'}</span><h3>Nothing here</h3></div>`;
+        return;
+      }
+      grid.innerHTML = items.map(item => `
+        <div class="menu-card">
+          <div class="menu-card-img">
+            ${item.image_url
+              ? `<img src="${item.image_url}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover">`
+              : CATEGORY_ICONS[item.category] || '🍽️'}
+          </div>
+          <div class="menu-card-body">
+            <div class="menu-card-category">${item.category}</div>
+            <div class="menu-card-name">${item.name}</div>
+            <div class="menu-card-desc">${item.description}</div>
+            <div class="menu-card-footer">
+              <span class="menu-card-price">${fmtPrice(item.price)}</span>
+              <button class="btn btn-primary btn-sm" onclick="addToCart(${item.id})">
+                <i data-lucide="plus"></i> Add
+              </button>
+            </div>
+          </div>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+
+    // ── Cart ─────────────────────────────────────────────────────
+    window.addToCart = (id) => {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      const existing = cart.find(c => c.id === id);
+      if (existing) existing.qty++;
+      else cart.push({ id: item.id, name: item.name, price: Number(item.price), qty: 1 });
+      showToast(`${item.name} added to cart`, 'success');
+      renderCart();
+    };
+
+    window.removeFromCart = (id) => {
+      cart = cart.filter(c => c.id !== id);
+      renderCart();
+    };
+
+    window.changeQty = (id, delta) => {
+      const item = cart.find(c => c.id === id);
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) cart = cart.filter(c => c.id !== id);
+      renderCart();
+    };
+
+    function renderCart() {
+      const count = cart.reduce((s, i) => s + i.qty, 0);
+      document.getElementById('cart-badge-header').textContent = count;
+      document.getElementById('cart-badge-fab').textContent    = count;
+      document.getElementById('cart-badge-header').classList.toggle('show', count > 0);
+      document.getElementById('cart-badge-fab').classList.toggle('show', count > 0);
+
+      const body   = document.getElementById('cart-body');
+      const footer = document.getElementById('cart-footer');
+
+      if (cart.length === 0) {
+        body.innerHTML = `<div class="empty-state"><span class="empty-state-icon">🛒</span><h3>Cart is empty</h3><p>Add items from the menu</p></div>`;
+        footer.style.display = 'none';
+        return;
+      }
+
+      const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+      body.innerHTML = cart.map(item => `
+        <div class="cart-item">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-price">${fmtPrice(item.price)} each</div>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn" onclick="changeQty(${item.id}, -1)">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" onclick="changeQty(${item.id}, +1)">+</button>
+            <button class="btn-icon btn" onclick="removeFromCart(${item.id})" style="color:var(--red);border:none;padding:0.2rem">
+              <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+            </button>
+          </div>
+        </div>`).join('');
+
+      document.getElementById('cart-totals').innerHTML = `
+        <div class="cart-total-row"><span>Subtotal (${count} items)</span><span>${fmtPrice(subtotal)}</span></div>
+        <div class="cart-total-row big"><span>Total</span><span class="text-primary">${fmtPrice(subtotal)}</span></div>`;
+
+      footer.style.display = 'block';
+      lucide.createIcons();
+    }
+
+    // ── Delivery ─────────────────────────────────────────────────
+    window.selectDelivery = (type) => {
+      deliveryType = type;
+      document.getElementById('opt-delivery').classList.toggle('selected', type === 'rig_delivery');
+      document.getElementById('opt-pickup').classList.toggle('selected', type === 'pickup');
+      document.getElementById('rig-input-wrap').classList.toggle('show', type === 'rig_delivery');
+    };
+
+    // ── Cart open/close ──────────────────────────────────────────
+    function openCart() {
+      document.getElementById('cart-panel').classList.add('open');
+      document.getElementById('cart-overlay').classList.add('open');
+    }
+    function closeCart() {
+      document.getElementById('cart-panel').classList.remove('open');
+      document.getElementById('cart-overlay').classList.remove('open');
+    }
+    document.getElementById('open-cart-btn').onclick = openCart;
+    document.getElementById('cart-fab-btn').onclick  = openCart;
+    document.getElementById('close-cart').onclick    = closeCart;
+    document.getElementById('cart-overlay').onclick  = closeCart;
+
+    // ── Category tabs ────────────────────────────────────────────
+    document.querySelectorAll('#category-tabs .tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('#category-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCategory = btn.dataset.cat;
+        renderMenu();
+      };
+    });
+
+    // ── Checkout ─────────────────────────────────────────────────
+    document.getElementById('checkout-btn').onclick = async () => {
+      const btn    = document.getElementById('checkout-btn');
+      const errEl  = document.getElementById('checkout-error');
+      errEl.classList.remove('show');
+
+      if (cart.length === 0) { errEl.textContent = 'Your cart is empty.'; errEl.classList.add('show'); return; }
+      const rigNum = document.getElementById('rig-number-input').value.trim();
+      if (deliveryType === 'rig_delivery' && !rigNum) {
+        errEl.textContent = 'Please enter your rig number for delivery.';
+        errEl.classList.add('show'); return;
+      }
+
+      const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+      const items = cart.map(({ id, name, price, qty }) => ({ id, name, price, qty }));
+
+      setLoading(btn, true, 'Placing order…');
+      try {
+        const { error } = await supabase.from('orders').insert({
+          user_id:       profile.id,
+          items,
+          total:         total.toFixed(2),
+          status:        'pending',
+          delivery_type: deliveryType,
+          rig_number:    deliveryType === 'rig_delivery' ? rigNum : null,
+        });
+        if (error) throw error;
+        cart = [];
+        renderCart();
+        closeCart();
+        showToast('Order placed! 🎉 Your food is on its way.', 'success');
+        document.getElementById('rig-number-input').value = '';
+        setLoading(btn, false);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.add('show');
+        setLoading(btn, false);
+        lucide.createIcons();
+      }
+    };
+
+    await loadMenu();
+    renderCart();
+  </script>
+</body>
+</html>

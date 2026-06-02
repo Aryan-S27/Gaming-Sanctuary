@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kitchen Display — Gaming Sanctuary Admin</title>
+  <meta name="description" content="Live kitchen display system for Gaming Sanctuary orders." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    .kds-pending-header  { border-top: 3px solid var(--amber); }
+    .kds-preparing-header{ border-top: 3px solid var(--teal);  }
+    .kds-completed-header{ border-top: 3px solid var(--green); }
+    .new-order-flash { animation: flash 0.6s ease 3; }
+    @keyframes flash { 0%,100%{border-color:var(--border)} 50%{border-color:var(--amber);box-shadow:0 0 12px rgba(245,158,11,0.4)} }
+  </style>
+</head>
+<body>
+  <div class="app-layout admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/admin/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Admin Panel</div></div>
+      </a>
+      <span class="sidebar-section-label">Overview</span>
+      <a href="/admin/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <span class="sidebar-section-label">Operations</span>
+      <a href="/admin/schedule.html" class="nav-link"><i data-lucide="calendar-range"></i><span>Schedule</span></a>
+      <a href="/admin/walk-in.html" class="nav-link"><i data-lucide="user-plus"></i><span>Walk-In</span></a>
+      <a href="/admin/rigs.html" class="nav-link"><i data-lucide="monitor"></i><span>Rigs</span></a>
+      <a href="/admin/orders.html" class="nav-link active"><i data-lucide="chef-hat"></i><span>Kitchen (KDS)</span></a>
+      <a href="/admin/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Menu Items</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role" style="color:var(--amber)">Admin</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Kitchen Display System</h1>
+          <p class="page-subtitle">Live order feed — updates in real time</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;color:var(--green)">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite"></div>
+            Live
+          </div>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <div class="kds-grid" id="kds-grid">
+          <div class="kds-column">
+            <div class="kds-column-header kds-pending-header">
+              <span class="kds-column-title"><i data-lucide="clock"></i> Pending</span>
+              <span class="badge badge-amber" id="count-pending">0</span>
+            </div>
+            <div class="kds-column-body" id="col-pending">
+              <div class="loading-state" style="padding:1.5rem"><div class="spinner"></div></div>
+            </div>
+          </div>
+          <div class="kds-column">
+            <div class="kds-column-header kds-preparing-header">
+              <span class="kds-column-title"><i data-lucide="flame"></i> Preparing</span>
+              <span class="badge badge-teal" id="count-preparing">0</span>
+            </div>
+            <div class="kds-column-body" id="col-preparing">
+              <div class="loading-state" style="padding:1.5rem"><div class="spinner"></div></div>
+            </div>
+          </div>
+          <div class="kds-column">
+            <div class="kds-column-header kds-completed-header">
+              <span class="kds-column-title"><i data-lucide="check-circle"></i> Completed</span>
+              <span class="badge badge-green" id="count-completed">0</span>
+            </div>
+            <div class="kds-column-body" id="col-completed">
+              <div class="loading-state" style="padding:1.5rem"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <style>
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  </style>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtPrice, fmtDateTime, confirmDialog, setLoading, avatarInitials } from '/js/utils.js';
+
+    const auth = await requireAuth('admin');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    lucide.createIcons();
+
+    const NEXT_STATUS = { pending: 'preparing', preparing: 'completed' };
+    const ADV_LABEL   = { pending: 'Start Preparing', preparing: 'Mark Completed' };
+    const ADV_CLASS   = { pending: 'btn-teal', preparing: 'btn-success' };
+
+    let allOrders = [];
+
+    async function loadOrders() {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, user_id, items, total, status, delivery_type, rig_number, created_at, profiles(name)')
+        .order('created_at', { ascending: true });
+
+      if (error) { showToast(error.message, 'error'); return; }
+      allOrders = data || [];
+      renderKDS();
+    }
+
+    function renderKDS() {
+      const pending   = allOrders.filter(o => o.status === 'pending');
+      const preparing = allOrders.filter(o => o.status === 'preparing');
+      const completed = allOrders.filter(o => o.status === 'completed');
+
+      document.getElementById('count-pending').textContent   = pending.length;
+      document.getElementById('count-preparing').textContent = preparing.length;
+      document.getElementById('count-completed').textContent = completed.length;
+
+      renderColumn('col-pending',   pending,   'pending');
+      renderColumn('col-preparing', preparing, 'preparing');
+      renderColumn('col-completed', completed, 'completed');
+      lucide.createIcons();
+    }
+
+    function renderColumn(elId, orders, status) {
+      const el = document.getElementById(elId);
+      if (!orders.length) {
+        el.innerHTML = `<div class="empty-state" style="padding:1.5rem">
+          <span style="font-size:1.5rem;opacity:0.3;display:block;text-align:center;margin-bottom:0.5rem">${status === 'completed' ? '✅' : '🍳'}</span>
+          <p style="text-align:center;font-size:0.8rem;color:var(--muted)">No ${status} orders</p>
+        </div>`;
+        return;
+      }
+
+      el.innerHTML = orders.map(o => {
+        const items   = Array.isArray(o.items) ? o.items : [];
+        const delivBadge = o.delivery_type === 'rig_delivery'
+          ? `<span class="badge badge-purple">🎮 Rig ${o.rig_number || '?'}</span>`
+          : `<span class="badge badge-teal">🥡 Pickup</span>`;
+        const advBtn = NEXT_STATUS[status]
+          ? `<button class="btn btn-sm ${ADV_CLASS[status]}" onclick="advanceOrder(${o.id}, '${NEXT_STATUS[status]}')">${ADV_LABEL[status]}</button>`
+          : `<span class="badge badge-green" style="margin-left:auto"><i data-lucide="check" style="width:10px;height:10px"></i> Done</span>`;
+        return `
+          <div class="order-card" id="order-${o.id}">
+            <div class="order-card-header">
+              <div>
+                <div class="order-id">Order #${o.id}</div>
+                <div class="order-time">${fmtDateTime(o.created_at)}</div>
+              </div>
+              ${delivBadge}
+            </div>
+            <div class="order-customer">
+              <i data-lucide="user" style="width:12px;height:12px;display:inline;vertical-align:middle"></i>
+              ${o.profiles?.name || 'Unknown'}
+            </div>
+            <ul class="order-items-list">
+              ${items.map(i => `<li><span>${i.name}</span><span>×${i.qty} · ${fmtPrice(i.price * i.qty)}</span></li>`).join('')}
+            </ul>
+            <div class="order-card-footer">
+              <span class="order-total">${fmtPrice(o.total)}</span>
+              ${advBtn}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    window.advanceOrder = async (id, newStatus) => {
+      try {
+        const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+        if (error) throw error;
+        showToast(`Order #${id} → ${newStatus}`, 'success');
+        await loadOrders();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    // ── Realtime ─────────────────────────────────────────────────
+    supabase.channel('kds-orders')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        showToast(`🔔 New order #${payload.new.id} received!`, 'info');
+        loadOrders();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        loadOrders();
+      })
+      .subscribe();
+
+    await loadOrders();
+  </script>
+</body>
+</html>

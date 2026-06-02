@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rig Inventory — Gaming Sanctuary Admin</title>
+  <meta name="description" content="Manage gaming rigs at Gaming Sanctuary." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/admin/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Admin Panel</div></div>
+      </a>
+      <span class="sidebar-section-label">Overview</span>
+      <a href="/admin/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <span class="sidebar-section-label">Operations</span>
+      <a href="/admin/schedule.html" class="nav-link"><i data-lucide="calendar-range"></i><span>Schedule</span></a>
+      <a href="/admin/walk-in.html" class="nav-link"><i data-lucide="user-plus"></i><span>Walk-In</span></a>
+      <a href="/admin/rigs.html" class="nav-link active"><i data-lucide="monitor"></i><span>Rigs</span></a>
+      <a href="/admin/orders.html" class="nav-link"><i data-lucide="chef-hat"></i><span>Kitchen (KDS)</span></a>
+      <a href="/admin/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Menu Items</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role" style="color:var(--amber)">Admin</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Rig Inventory</h1>
+          <p class="page-subtitle">Manage all gaming stations</p>
+        </div>
+        <button class="btn btn-primary" id="add-rig-btn">
+          <i data-lucide="plus"></i> Add Rig
+        </button>
+      </div>
+
+      <div class="page-body">
+        <div class="card" style="padding:0">
+          <div id="rigs-table">
+            <div class="loading-state"><div class="spinner"></div> Loading rigs…</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay hidden" id="rig-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="rig-modal-title">Add New Rig</span>
+        <button class="modal-close" onclick="closeRigModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Rig name</label>
+          <input class="input" type="text" id="rig-name" placeholder="e.g. Rig 06" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select class="input" id="rig-type">
+              <option value="PC">PC</option>
+              <option value="Console">Console</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="input" id="rig-status">
+              <option value="available">Available</option>
+              <option value="occupied">Occupied</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Specs</label>
+          <input class="input" type="text" id="rig-specs" placeholder="GPU | CPU | RAM | Storage" />
+        </div>
+        <p class="error-msg" id="rig-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeRigModal()">Cancel</button>
+        <button class="btn btn-primary" id="rig-save-btn"><i data-lucide="save"></i> Save Rig</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, confirmDialog, setLoading, rigStatusBadge, avatarInitials } from '/js/utils.js';
+
+    const auth = await requireAuth('admin');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    lucide.createIcons();
+
+    let editingId = null;
+
+    // ── Load Rigs ────────────────────────────────────────────────
+    async function loadRigs() {
+      const el = document.getElementById('rigs-table');
+      el.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+      const { data, error } = await supabase.from('rigs').select('*').order('id');
+      if (error) { showToast(error.message, 'error'); return; }
+      if (!data || data.length === 0) {
+        el.innerHTML = `<div class="empty-state"><span class="empty-state-icon">🖥️</span><h3>No rigs yet</h3><p>Add your first gaming rig!</p></div>`;
+        return;
+      }
+      el.innerHTML = `
+        <div class="table-wrap" style="border:none">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Specs</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              ${data.map(rig => `
+                <tr>
+                  <td><strong>${rig.name}</strong></td>
+                  <td><span class="badge ${rig.type === 'PC' ? 'badge-purple' : 'badge-teal'}">${rig.type}</span></td>
+                  <td class="text-muted text-sm" style="max-width:240px">${rig.specs}</td>
+                  <td>${rigStatusBadge(rig.status)}</td>
+                  <td>
+                    <div class="actions-cell">
+                      <button class="btn btn-ghost btn-sm" onclick="editRig(${rig.id})">
+                        <i data-lucide="pencil"></i> Edit
+                      </button>
+                      <button class="btn btn-danger btn-sm" onclick="deleteRig(${rig.id}, '${rig.name}')">
+                        <i data-lucide="trash-2"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      lucide.createIcons();
+    }
+
+    // ── Modal ────────────────────────────────────────────────────
+    let rigsCache = [];
+
+    document.getElementById('add-rig-btn').onclick = () => {
+      editingId = null;
+      document.getElementById('rig-modal-title').textContent = 'Add New Rig';
+      document.getElementById('rig-name').value  = '';
+      document.getElementById('rig-type').value  = 'PC';
+      document.getElementById('rig-status').value = 'available';
+      document.getElementById('rig-specs').value = '';
+      document.getElementById('rig-error').classList.remove('show');
+      document.getElementById('rig-modal').classList.remove('hidden');
+      lucide.createIcons();
+    };
+
+    window.closeRigModal = () => document.getElementById('rig-modal').classList.add('hidden');
+    document.getElementById('rig-modal').onclick = e => { if (e.target.id === 'rig-modal') closeRigModal(); };
+
+    window.editRig = async (id) => {
+      const { data } = await supabase.from('rigs').select('*').eq('id', id).single();
+      if (!data) return;
+      editingId = id;
+      document.getElementById('rig-modal-title').textContent = 'Edit Rig';
+      document.getElementById('rig-name').value   = data.name;
+      document.getElementById('rig-type').value   = data.type;
+      document.getElementById('rig-status').value = data.status;
+      document.getElementById('rig-specs').value  = data.specs;
+      document.getElementById('rig-error').classList.remove('show');
+      document.getElementById('rig-modal').classList.remove('hidden');
+      lucide.createIcons();
+    };
+
+    document.getElementById('rig-save-btn').onclick = async () => {
+      const btn    = document.getElementById('rig-save-btn');
+      const errEl  = document.getElementById('rig-error');
+      const name   = document.getElementById('rig-name').value.trim();
+      const type   = document.getElementById('rig-type').value;
+      const status = document.getElementById('rig-status').value;
+      const specs  = document.getElementById('rig-specs').value.trim();
+      errEl.classList.remove('show');
+
+      if (!name)  { errEl.textContent = 'Rig name is required.'; errEl.classList.add('show'); return; }
+      if (!specs) { errEl.textContent = 'Specs are required.'; errEl.classList.add('show'); return; }
+
+      setLoading(btn, true, 'Saving…');
+      try {
+        if (editingId) {
+          const { error } = await supabase.from('rigs').update({ name, type, status, specs }).eq('id', editingId);
+          if (error) throw error;
+          showToast(`${name} updated`, 'success');
+        } else {
+          const { error } = await supabase.from('rigs').insert({ name, type, status, specs });
+          if (error) throw error;
+          showToast(`${name} added`, 'success');
+        }
+        closeRigModal();
+        await loadRigs();
+        setLoading(btn, false);
+        lucide.createIcons();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.add('show');
+        setLoading(btn, false);
+        lucide.createIcons();
+      }
+    };
+
+    window.deleteRig = async (id, name) => {
+      const ok = await confirmDialog(`Delete <strong>${name}</strong>? This will also remove its bookings.`, 'Delete Rig');
+      if (!ok) return;
+      try {
+        const { error } = await supabase.from('rigs').delete().eq('id', id);
+        if (error) throw error;
+        showToast(`${name} deleted`, 'success');
+        await loadRigs();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    await loadRigs();
+  </script>
+</body>
+</html>

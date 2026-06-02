@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Gaming Sanctuary</title>
+  <meta name="description" content="Gaming Sanctuary admin control panel." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/admin/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Admin Panel</div></div>
+      </a>
+      <span class="sidebar-section-label">Overview</span>
+      <a href="/admin/dashboard.html" class="nav-link active"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <span class="sidebar-section-label">Operations</span>
+      <a href="/admin/schedule.html" class="nav-link"><i data-lucide="calendar-range"></i><span>Schedule</span></a>
+      <a href="/admin/walk-in.html" class="nav-link"><i data-lucide="user-plus"></i><span>Walk-In</span></a>
+      <a href="/admin/rigs.html" class="nav-link"><i data-lucide="monitor"></i><span>Rigs</span></a>
+      <a href="/admin/orders.html" class="nav-link"><i data-lucide="chef-hat"></i><span>Kitchen (KDS)</span></a>
+      <a href="/admin/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Menu Items</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role" style="color:var(--amber)">Admin</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title" id="welcome-msg">Admin Dashboard</h1>
+          <p class="page-subtitle" id="today-label">Loading…</p>
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+          <a href="/admin/schedule.html" class="btn btn-ghost"><i data-lucide="calendar-range"></i> Schedule</a>
+          <a href="/admin/walk-in.html" class="btn btn-primary"><i data-lucide="user-plus"></i> Walk-In</a>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <!-- Stats -->
+        <div class="grid-4 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="calendar"></i></div>
+            <div class="stat-value text-primary" id="stat-bookings-today">—</div>
+            <div class="stat-label">Active bookings today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="clock"></i></div>
+            <div class="stat-value" style="color:var(--amber)" id="stat-pending-orders">—</div>
+            <div class="stat-label">Pending café orders</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="monitor"></i></div>
+            <div class="stat-value" style="color:var(--teal)" id="stat-total-rigs">—</div>
+            <div class="stat-label">Total rigs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="check-circle"></i></div>
+            <div class="stat-value" style="color:var(--green)" id="stat-avail-rigs">—</div>
+            <div class="stat-label">Available rigs</div>
+          </div>
+        </div>
+
+        <!-- Quick nav -->
+        <div class="grid-3 mb-3">
+          <a href="/admin/schedule.html" class="card" style="text-decoration:none;display:flex;align-items:center;gap:1rem;transition:all 0.2s">
+            <div style="width:44px;height:44px;border-radius:var(--radius);background:rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="calendar-range" style="color:var(--primary-l)"></i></div>
+            <div><div style="font-weight:600;font-size:0.9rem">Live Schedule</div><div class="text-muted text-xs">Timeline grid</div></div>
+          </a>
+          <a href="/admin/orders.html" class="card" style="text-decoration:none;display:flex;align-items:center;gap:1rem;transition:all 0.2s">
+            <div style="width:44px;height:44px;border-radius:var(--radius);background:rgba(245,158,11,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="chef-hat" style="color:var(--amber)"></i></div>
+            <div><div style="font-weight:600;font-size:0.9rem">Kitchen Display</div><div class="text-muted text-xs">Pending orders</div></div>
+          </a>
+          <a href="/admin/rigs.html" class="card" style="text-decoration:none;display:flex;align-items:center;gap:1rem;transition:all 0.2s">
+            <div style="width:44px;height:44px;border-radius:var(--radius);background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="monitor" style="color:var(--teal)"></i></div>
+            <div><div style="font-weight:600;font-size:0.9rem">Rig Inventory</div><div class="text-muted text-xs">Manage rigs</div></div>
+          </a>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i data-lucide="receipt"></i> Recent Orders</span>
+            <a href="/admin/orders.html" class="btn btn-ghost btn-sm">View KDS</a>
+          </div>
+          <div id="recent-orders">
+            <div class="loading-state"><div class="spinner"></div> Loading…</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDateTime, fmtPrice, confirmDialog, orderStatusBadge, avatarInitials, todayStr } from '/js/utils.js';
+
+    const auth = await requireAuth('admin');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    const today = todayStr();
+    const now = new Date();
+    document.getElementById('welcome-msg').textContent = `Welcome, ${profile.name}`;
+    document.getElementById('today-label').textContent = now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+    lucide.createIcons();
+
+    // ── Load Stats ───────────────────────────────────────────────
+    const [bookingsRes, ordersRes, rigsRes, pendingRes] = await Promise.all([
+      supabase.from('bookings').select('id', {count:'exact',head:true}).eq('date', today),
+      supabase.from('orders').select('id,user_id,items,total,status,delivery_type,rig_number,created_at,profiles(name)').order('created_at',{ascending:false}).limit(10),
+      supabase.from('rigs').select('id,status'),
+      supabase.from('orders').select('id',{count:'exact',head:true}).eq('status','pending'),
+    ]);
+
+    document.getElementById('stat-bookings-today').textContent = bookingsRes.count ?? 0;
+    document.getElementById('stat-pending-orders').textContent = pendingRes.count ?? 0;
+    const rigs = rigsRes.data || [];
+    document.getElementById('stat-total-rigs').textContent = rigs.length;
+    document.getElementById('stat-avail-rigs').textContent = rigs.filter(r => r.status === 'available').length;
+
+    // ── Recent Orders table ──────────────────────────────────────
+    const el = document.getElementById('recent-orders');
+    const orders = ordersRes.data || [];
+    if (orders.length === 0) {
+      el.innerHTML = `<div class="empty-state"><span class="empty-state-icon">🍽️</span><h3>No orders yet</h3></div>`;
+    } else {
+      el.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Delivery</th><th>Status</th><th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(o => {
+                const items = Array.isArray(o.items) ? o.items : [];
+                const delivBadge = o.delivery_type === 'rig_delivery'
+                  ? `<span class="badge badge-purple">🎮 Rig ${o.rig_number || ''}</span>`
+                  : `<span class="badge badge-teal">🥡 Pickup</span>`;
+                return `<tr>
+                  <td><strong class="text-primary">#${o.id}</strong></td>
+                  <td>${o.profiles?.name || 'Unknown'}</td>
+                  <td class="text-muted text-sm">${items.slice(0,2).map(i=>`${i.name}×${i.qty}`).join(', ')}${items.length>2?'…':''}</td>
+                  <td><strong>${fmtPrice(o.total)}</strong></td>
+                  <td>${delivBadge}</td>
+                  <td>${orderStatusBadge(o.status)}</td>
+                  <td class="text-muted text-xs">${fmtDateTime(o.created_at)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Gaming Sanctuary</title>
+  <meta name="description" content="Your Gaming Sanctuary customer dashboard." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+  <div class="app-layout customer-layout">
+
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+      <a href="/customer/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div>
+          <div class="sidebar-logo-text">Sanctuary</div>
+          <div class="sidebar-logo-sub">Customer Portal</div>
+        </div>
+      </a>
+
+      <span class="sidebar-section-label">Menu</span>
+      <a href="/customer/dashboard.html" class="nav-link active" id="nav-dashboard">
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+      </a>
+      <a href="/customer/book.html" class="nav-link" id="nav-book">
+        <i data-lucide="monitor-play"></i><span>Book a Rig</span>
+      </a>
+      <a href="/customer/bookings.html" class="nav-link" id="nav-bookings">
+        <i data-lucide="calendar-check"></i><span>My Bookings</span>
+      </a>
+      <a href="/customer/menu.html" class="nav-link" id="nav-menu">
+        <i data-lucide="utensils"></i><span>Café Menu</span>
+      </a>
+      <a href="/customer/orders.html" class="nav-link" id="nav-orders">
+        <i data-lucide="receipt"></i><span>My Orders</span>
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">U</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebar-name">Loading…</div>
+            <div class="sidebar-user-role">Customer</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem">
+          <i data-lucide="log-out"></i><span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <header class="top-bar">
+      <div class="top-bar-logo">🎮 Sanctuary</div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn-mobile">
+        <i data-lucide="log-out"></i>
+      </button>
+    </header>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title" id="welcome-msg">Welcome back 👋</h1>
+          <p class="page-subtitle">Here's what's happening today</p>
+        </div>
+        <a href="/customer/book.html" class="btn btn-primary">
+          <i data-lucide="plus"></i> Book a Rig
+        </a>
+      </div>
+
+      <div class="page-body">
+
+        <!-- Stats -->
+        <div class="grid-4 mb-3" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="calendar"></i></div>
+            <div class="stat-value text-primary" id="stat-month-bookings">—</div>
+            <div class="stat-label">Bookings this month</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="clock"></i></div>
+            <div class="stat-value" style="color:var(--teal)" id="stat-upcoming">—</div>
+            <div class="stat-label">Upcoming sessions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="shopping-bag"></i></div>
+            <div class="stat-value" style="color:var(--green)" id="stat-week-orders">—</div>
+            <div class="stat-label">Orders this week</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="trophy"></i></div>
+            <div class="stat-value" style="color:var(--amber)" id="stat-total-bookings">—</div>
+            <div class="stat-label">Total sessions</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="align-items:start">
+
+          <!-- Upcoming Bookings -->
+          <div class="card" style="grid-column:1/2">
+            <div class="card-header">
+              <span class="card-title"><i data-lucide="calendar-clock"></i> Upcoming Sessions</span>
+              <a href="/customer/bookings.html" class="btn btn-ghost btn-sm">View all</a>
+            </div>
+            <div id="upcoming-bookings-list">
+              <div class="loading-state"><div class="spinner"></div> Loading…</div>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <div style="display:flex;flex-direction:column;gap:1.25rem">
+
+            <!-- Quick Order -->
+            <div class="card" style="background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(6,182,212,0.1));border-color:rgba(124,58,237,0.4)">
+              <div class="card-title mb-2"><i data-lucide="utensils"></i> Café Menu</div>
+              <p class="text-muted text-sm mb-2">Fuel your session with drinks, burgers, and more — delivered right to your rig.</p>
+              <a href="/customer/menu.html" class="btn btn-primary btn-full">
+                <i data-lucide="shopping-cart"></i> Order Now
+              </a>
+            </div>
+
+            <!-- Quick Book -->
+            <div class="card">
+              <div class="card-title mb-2"><i data-lucide="monitor-play"></i> Book a Rig</div>
+              <p class="text-muted text-sm mb-2">Pick your date, choose a PC or Console rig, and lock in your slot.</p>
+              <a href="/customer/book.html" class="btn btn-ghost btn-full">
+                <i data-lucide="plus"></i> Make a Booking
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Bottom nav (mobile) -->
+    <nav class="bottom-nav">
+      <a href="/customer/dashboard.html" class="bottom-nav-item active"><i data-lucide="layout-dashboard"></i>Home</a>
+      <a href="/customer/book.html" class="bottom-nav-item"><i data-lucide="monitor-play"></i>Book</a>
+      <a href="/customer/bookings.html" class="bottom-nav-item"><i data-lucide="calendar-check"></i>Sessions</a>
+      <a href="/customer/menu.html" class="bottom-nav-item"><i data-lucide="utensils"></i>Menu</a>
+      <a href="/customer/orders.html" class="bottom-nav-item"><i data-lucide="receipt"></i>Orders</a>
+    </nav>
+
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDate, fmtTime, confirmDialog, avatarInitials, todayStr } from '/js/utils.js';
+
+    const auth = await requireAuth('customer');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    // ── Populate header / sidebar ────────────────────────────────
+    document.getElementById('welcome-msg').textContent = `Welcome back, ${profile.name} 👋`;
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+
+    lucide.createIcons();
+
+    // ── Logout ───────────────────────────────────────────────────
+    async function handleLogout() {
+      const ok = await confirmDialog('Are you sure you want to sign out?', 'Sign Out', 'btn-danger');
+      if (ok) { showToast('Signed out', 'info'); await signOut(); }
+    }
+    document.getElementById('logout-btn').onclick = handleLogout;
+    document.getElementById('logout-btn-mobile').onclick = handleLogout;
+    lucide.createIcons();
+
+    // ── Load stats ───────────────────────────────────────────────
+    const today = todayStr();
+    const now   = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const weekAgo = new Date(now - 7*24*60*60*1000);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+    const [{ data: allBookings }, { data: upcomingData }, { data: weekOrders }] = await Promise.all([
+      supabase.from('bookings').select('id, date').eq('user_id', profile.id).gte('date', monthStart),
+      supabase.from('bookings').select('id, date, start_time, end_time, rigs(name, type)').eq('user_id', profile.id).gte('date', today).order('date').order('start_time').limit(5),
+      supabase.from('orders').select('id').eq('user_id', profile.id).gte('created_at', weekAgoStr + 'T00:00:00Z'),
+    ]);
+
+    const upcoming = (upcomingData || []).filter(b => b.date > today || b.start_time > (now.getHours() + ':' + now.getMinutes()));
+    document.getElementById('stat-month-bookings').textContent  = allBookings?.length ?? 0;
+    document.getElementById('stat-upcoming').textContent        = upcoming.length;
+    document.getElementById('stat-week-orders').textContent     = weekOrders?.length ?? 0;
+    document.getElementById('stat-total-bookings').textContent  = '—';
+
+    // Total all time
+    const { count } = await supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('user_id', profile.id);
+    document.getElementById('stat-total-bookings').textContent = count ?? 0;
+
+    // ── Render upcoming bookings ─────────────────────────────────
+    function renderUpcoming(list) {
+      const el = document.getElementById('upcoming-bookings-list');
+      if (!list || list.length === 0) {
+        el.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-state-icon">🎮</span>
+            <h3>No upcoming sessions</h3>
+            <p class="text-muted text-sm">Book a rig to get started!</p>
+            <a href="/customer/book.html" class="btn btn-primary mt-2"><i data-lucide="plus"></i> Book Now</a>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
+      el.innerHTML = list.map(b => `
+        <div class="booking-row" style="margin-bottom:0.75rem">
+          <div style="flex:1;min-width:0">
+            <div class="booking-rig">${b.rigs?.name ?? 'Rig'} <span class="badge badge-${b.rigs?.type === 'PC' ? 'purple' : 'teal'}" style="font-size:0.65rem">${b.rigs?.type ?? ''}</span></div>
+            <div class="booking-meta">${fmtDate(b.date)} · ${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" data-id="${b.id}" data-date="${b.date}" onclick="cancelBooking(this)">
+            <i data-lucide="x"></i>
+          </button>
+        </div>`).join('');
+      lucide.createIcons();
+    }
+    renderUpcoming(upcoming);
+
+    // ── Cancel booking ───────────────────────────────────────────
+    window.cancelBooking = async (btn) => {
+      const id   = btn.dataset.id;
+      const date = btn.dataset.date;
+      if (date < today) return;
+      const ok = await confirmDialog('Cancel this booking? This cannot be undone.', 'Cancel Booking');
+      if (!ok) return;
+      try {
+        const { error } = await supabase.from('bookings').delete().eq('id', id);
+        if (error) throw error;
+        showToast('Booking cancelled', 'success');
+        // Re-fetch upcoming
+        const { data } = await supabase.from('bookings').select('id, date, start_time, end_time, rigs(name,type)').eq('user_id', profile.id).gte('date', today).order('date').order('start_time').limit(5);
+        renderUpcoming(data || []);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+  </script>
+</body>
+</html>

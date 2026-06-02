@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gaming Sanctuary</title>
+  <meta name="description" content="Gaming Sanctuary — Premium Gaming Lounge & Café" />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div style="text-align:center">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--primary),var(--teal));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:2rem;box-shadow:var(--glow-lg)">🎮</div>
+      <div class="spinner" style="margin:0 auto 1rem"></div>
+      <p style="color:var(--muted);font-size:0.875rem">Checking session…</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '/js/supabase-client.js';
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login.html';
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profile) {
+        window.location.href = '/login.html';
+        return;
+      }
+      window.location.href = profile.role === 'admin'
+        ? '/admin/dashboard.html'
+        : '/customer/dashboard.html';
+    })();
+  </script>
+</body>
+</html>
