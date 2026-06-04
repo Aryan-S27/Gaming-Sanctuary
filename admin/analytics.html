@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics & Reports — Gaming Sanctuary</title>
+  <meta name="description" content="Gaming Sanctuary analytics dashboard." />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .range-toggle {
+      display: flex; background: var(--surface); padding: 4px; border-radius: var(--radius); gap: 4px;
+    }
+    .range-toggle button {
+      background: transparent; border: none; padding: 6px 12px; color: var(--text-muted);
+      border-radius: calc(var(--radius) - 2px); cursor: pointer; font-size: 0.85rem; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .range-toggle button.active {
+      background: var(--primary); color: white;
+    }
+    .chart-container {
+      background: var(--surface); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border);
+      position: relative; height: 350px; width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <a href="/admin/dashboard.html" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎮</div>
+        <div><div class="sidebar-logo-text">Sanctuary</div><div class="sidebar-logo-sub">Admin Panel</div></div>
+      </a>
+      <span class="sidebar-section-label">Overview</span>
+      <a href="/admin/dashboard.html" class="nav-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="/admin/analytics.html" class="nav-link active"><i data-lucide="bar-chart-2"></i><span>Analytics</span></a>
+      <span class="sidebar-section-label">Operations</span>
+      <a href="/admin/schedule.html" class="nav-link"><i data-lucide="calendar-range"></i><span>Schedule</span></a>
+      <a href="/admin/walk-in.html" class="nav-link"><i data-lucide="user-plus"></i><span>Walk-In</span></a>
+      <a href="/admin/rigs.html" class="nav-link"><i data-lucide="monitor"></i><span>Rigs</span></a>
+      <a href="/admin/orders.html" class="nav-link"><i data-lucide="chef-hat"></i><span>Kitchen (KDS)</span></a>
+      <a href="/admin/menu.html" class="nav-link"><i data-lucide="utensils"></i><span>Menu Items</span></a>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+          <div class="sidebar-user-info"><div class="sidebar-user-name" id="sidebar-name">…</div><div class="sidebar-user-role" style="color:var(--amber)">Admin</div></div>
+        </div>
+        <button class="btn btn-ghost btn-full mt-1" id="logout-btn" style="font-size:0.8rem"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header" style="flex-wrap:wrap">
+        <div class="page-header-left">
+          <h1 class="page-title">Analytics & Reports</h1>
+          <p class="page-subtitle">Gaming performance and café metrics</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div class="range-toggle">
+            <button id="btn-daily" class="active">Daily</button>
+            <button id="btn-monthly">Monthly</button>
+            <button id="btn-annual">Annual</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <button class="btn btn-icon" id="prev-btn"><i data-lucide="chevron-left"></i></button>
+            <span id="date-display" style="font-weight:700;font-family:monospace;width:140px;text-align:center"></span>
+            <button class="btn btn-icon" id="next-btn"><i data-lucide="chevron-right"></i></button>
+            <button class="btn btn-ghost" id="today-btn"><i data-lucide="calendar"></i> Today</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <!-- Stats -->
+        <div class="grid-4 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
+            <div class="stat-value text-primary" id="stat-bookings">—</div>
+            <div class="stat-label">Total Bookings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="indian-rupee"></i></div>
+            <div class="stat-value" style="color:var(--primary-l)" id="stat-gaming-rev">—</div>
+            <div class="stat-label">Gaming Revenue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="indian-rupee"></i></div>
+            <div class="stat-value" style="color:var(--green)" id="stat-cafe-rev">—</div>
+            <div class="stat-label">Café Revenue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i data-lucide="package"></i></div>
+            <div class="stat-value" style="color:var(--teal)" id="stat-items">—</div>
+            <div class="stat-label">Café Items Sold</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2 mb-3">
+          <div class="chart-container">
+            <canvas id="bookingsChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i data-lucide="trending-up"></i> Top Selling Café Items</span>
+          </div>
+          <div id="items-table-container">
+            <div class="loading-state"><div class="spinner"></div> Loading…</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireAuth, signOut } from '/js/auth-guard.js';
+    import { supabase } from '/js/supabase-client.js';
+    import { showToast, fmtDate, fmtPrice, confirmDialog, avatarInitials, todayStr } from '/js/utils.js';
+
+    const auth = await requireAuth('admin');
+    if (!auth) throw new Error('redirecting');
+    const { profile } = auth;
+
+    document.getElementById('sidebar-name').textContent = profile.name;
+    document.getElementById('sidebar-avatar').textContent = avatarInitials(profile.name);
+    lucide.createIcons();
+
+    document.getElementById('logout-btn').onclick = async () => {
+      if (await confirmDialog('Sign out?', 'Sign Out')) { showToast('Signed out', 'info'); await signOut(); }
+    };
+
+    Chart.defaults.color = '#8b8b9e';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    // ── Date & Mode Logic ────────────────────────────────────────
+    let currentMode = 'daily'; // daily, monthly, annual
+    let currentDate = new Date(todayStr());
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.range-toggle button').forEach(b => b.classList.remove('active'));
+      document.getElementById(`btn-${mode}`).classList.add('active');
+      currentDate = new Date(todayStr()); // reset to current period on mode change
+      updateDateDisplay();
+      loadData();
+    }
+
+    document.getElementById('btn-daily').onclick = () => setMode('daily');
+    document.getElementById('btn-monthly').onclick = () => setMode('monthly');
+    document.getElementById('btn-annual').onclick = () => setMode('annual');
+
+    function offsetDate(steps) {
+      if (currentMode === 'daily') currentDate.setUTCDate(currentDate.getUTCDate() + steps);
+      else if (currentMode === 'monthly') currentDate.setUTCMonth(currentDate.getUTCMonth() + steps);
+      else if (currentMode === 'annual') currentDate.setUTCFullYear(currentDate.getUTCFullYear() + steps);
+      updateDateDisplay();
+      loadData();
+    }
+
+    function updateDateDisplay() {
+      const el = document.getElementById('date-display');
+      if (currentMode === 'daily') {
+        el.textContent = fmtDate(currentDate.toISOString().split('T')[0]);
+      } else if (currentMode === 'monthly') {
+        el.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      } else if (currentMode === 'annual') {
+        el.textContent = currentDate.getUTCFullYear().toString();
+      }
+    }
+
+    document.getElementById('prev-btn').onclick = () => offsetDate(-1);
+    document.getElementById('next-btn').onclick = () => offsetDate(1);
+    document.getElementById('today-btn').onclick = () => { currentDate = new Date(todayStr()); updateDateDisplay(); loadData(); };
+    updateDateDisplay();
+
+    let bookingsChartInstance = null;
+    let revenueChartInstance = null;
+
+    // ── Load Data ────────────────────────────────────────────────
+    async function loadData() {
+      document.getElementById('items-table-container').innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+      
+      const startRange = new Date(currentDate);
+      const endRange = new Date(currentDate);
+
+      if (currentMode === 'daily') {
+        startRange.setUTCHours(0,0,0,0);
+        endRange.setUTCHours(23,59,59,999);
+      } else if (currentMode === 'monthly') {
+        startRange.setUTCDate(1); startRange.setUTCHours(0,0,0,0);
+        endRange.setUTCMonth(endRange.getUTCMonth() + 1, 0); endRange.setUTCHours(23,59,59,999);
+      } else if (currentMode === 'annual') {
+        startRange.setUTCMonth(0, 1); startRange.setUTCHours(0,0,0,0);
+        endRange.setUTCMonth(11, 31); endRange.setUTCHours(23,59,59,999);
+      }
+
+      const startStr = startRange.toISOString().split('T')[0];
+      const endStr = endRange.toISOString().split('T')[0];
+
+      const [rigsRes, bookingsRes, ordersRes] = await Promise.all([
+        supabase.from('rigs').select('id, name, price_per_hour'),
+        supabase.from('bookings').select('rig_id, date, start_time, end_time')
+          .gte('date', startStr).lte('date', endStr),
+        supabase.from('orders').select('items, total, status')
+          .gte('created_at', startRange.toISOString())
+          .lte('created_at', endRange.toISOString())
+      ]);
+
+      if (rigsRes.error) { showToast(rigsRes.error.message, 'error'); return; }
+      if (bookingsRes.error) { showToast(bookingsRes.error.message, 'error'); return; }
+      if (ordersRes.error) { showToast(ordersRes.error.message, 'error'); return; }
+
+      const allRigs = rigsRes.data || [];
+      const bookings = bookingsRes.data || [];
+      const orders = ordersRes.data || [];
+
+      // Calculate Metrics & Prepare Chart Data
+      let cafeRevenue = 0;
+      let totalItemsSold = 0;
+      const itemMap = {}; 
+
+      // Café Data
+      orders.forEach(o => {
+        if (o.status !== 'rejected') {
+          cafeRevenue += parseFloat(o.total) || 0;
+          const items = Array.isArray(o.items) ? o.items : [];
+          items.forEach(item => {
+            const qty = parseInt(item.qty) || 0;
+            const price = parseFloat(item.price) || 0;
+            totalItemsSold += qty;
+            if (!itemMap[item.name]) itemMap[item.name] = { name: item.name, qty: 0, revenue: 0 };
+            itemMap[item.name].qty += qty;
+            itemMap[item.name].revenue += (qty * price);
+          });
+        }
+      });
+
+      // Gaming Data
+      let gamingRevenue = 0;
+      const rigMap = {};
+      const rigColors = [
+        '#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'
+      ];
+
+      allRigs.forEach((r, idx) => {
+        rigMap[r.id] = { 
+          name: r.name, 
+          rate: parseFloat(r.price_per_hour) || 150,
+          color: rigColors[idx % rigColors.length],
+          daysBookings: { 'Mon':0, 'Tue':0, 'Wed':0, 'Thu':0, 'Fri':0, 'Sat':0, 'Sun':0 },
+          daysRevenue: { 'Mon':0, 'Tue':0, 'Wed':0, 'Thu':0, 'Fri':0, 'Sat':0, 'Sun':0 }
+        };
+      });
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      bookings.forEach(b => {
+        const [sh, sm] = b.start_time.split(':').map(Number);
+        const [eh, em] = b.end_time.split(':').map(Number);
+        const durationHours = (eh + em/60) - (sh + sm/60);
+        
+        const rig = rigMap[b.rig_id];
+        if (!rig) return;
+
+        const rev = durationHours * rig.rate;
+        gamingRevenue += rev;
+
+        const d = new Date(b.date);
+        const dayName = dayNames[d.getUTCDay()];
+
+        rig.daysBookings[dayName] += 1;
+        rig.daysRevenue[dayName] += rev;
+      });
+
+      // Update Metric Cards
+      document.getElementById('stat-bookings').textContent = bookings.length;
+      document.getElementById('stat-gaming-rev').textContent = fmtPrice(gamingRevenue);
+      document.getElementById('stat-cafe-rev').textContent = fmtPrice(cafeRevenue);
+      document.getElementById('stat-items').textContent = totalItemsSold;
+
+      // Update Charts
+      const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      
+      const bookingsDatasets = allRigs.map(r => ({
+        label: r.name,
+        data: chartLabels.map(day => rigMap[r.id].daysBookings[day]),
+        backgroundColor: rigMap[r.id].color,
+        borderRadius: 4
+      }));
+
+      const revenueDatasets = allRigs.map(r => ({
+        label: r.name,
+        data: chartLabels.map(day => rigMap[r.id].daysRevenue[day]),
+        backgroundColor: rigMap[r.id].color,
+        borderRadius: 4
+      }));
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { grid: { display: false } }
+        }
+      };
+
+      if (bookingsChartInstance) bookingsChartInstance.destroy();
+      bookingsChartInstance = new Chart(document.getElementById('bookingsChart'), {
+        type: 'bar',
+        data: { labels: chartLabels, datasets: bookingsDatasets },
+        options: { ...chartOptions, plugins: { ...chartOptions.plugins, title: { display: true, text: 'Bookings per Rig (by Day)', color: '#fff' } } }
+      });
+
+      if (revenueChartInstance) revenueChartInstance.destroy();
+      revenueChartInstance = new Chart(document.getElementById('revenueChart'), {
+        type: 'bar',
+        data: { labels: chartLabels, datasets: revenueDatasets },
+        options: { ...chartOptions, plugins: { ...chartOptions.plugins, title: { display: true, text: 'Gaming Revenue per Rig (by Day)', color: '#fff' } } }
+      });
+
+      // Render Table
+      const itemsList = Object.values(itemMap).sort((a, b) => b.qty - a.qty);
+      const el = document.getElementById('items-table-container');
+
+      if (itemsList.length === 0) {
+        el.innerHTML = `<div class="empty-state"><span class="empty-state-icon">📊</span><h3>No sales data</h3><p class="text-muted">No café items were sold in this period.</p></div>`;
+      } else {
+        el.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50%">Item Name</th>
+                  <th style="text-align:right">Quantity Sold</th>
+                  <th style="text-align:right">Revenue Generated</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsList.map(i => `
+                  <tr>
+                    <td><strong>${i.name}</strong></td>
+                    <td style="text-align:right;font-family:monospace;font-size:1.1rem;color:var(--teal)">${i.qty}</td>
+                    <td style="text-align:right;font-weight:700">${fmtPrice(i.revenue)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      }
+    }
+
+    await loadData();
+  </script>
+</body>
+</html>

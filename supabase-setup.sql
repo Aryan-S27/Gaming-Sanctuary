@@ -47,12 +47,13 @@ CREATE TABLE profiles (
 
 -- ---- Rigs ------------------------------------------------------
 CREATE TABLE rigs (
-  id         SERIAL PRIMARY KEY,
-  name       TEXT NOT NULL,
-  type       rig_type NOT NULL,
-  specs      TEXT NOT NULL,
-  status     rig_status NOT NULL DEFAULT 'available',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id           SERIAL PRIMARY KEY,
+  name         TEXT NOT NULL,
+  type         rig_type NOT NULL,
+  specs        TEXT NOT NULL,
+  status       rig_status NOT NULL DEFAULT 'available',
+  price_per_hour NUMERIC(10,2) NOT NULL DEFAULT 150.00,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ---- Bookings --------------------------------------------------
