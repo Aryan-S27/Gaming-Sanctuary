@@ -78,6 +78,29 @@
 
   </div>
 
+  <!-- Rig Info Modal -->
+  <div class="modal-overlay hidden" id="rig-info-modal">
+    <div class="modal" style="max-width: 400px">
+      <div class="modal-header">
+        <span class="modal-title" style="display:flex;align-items:center;gap:0.5rem">
+          <i data-lucide="info" style="color:var(--primary)"></i> Rig Details
+        </span>
+        <button class="modal-close" id="info-modal-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <h3 id="info-rig-name" style="margin-bottom:0.75rem;font-size:1.1rem"></h3>
+        <div style="background:var(--surface2);padding:1rem;border-radius:var(--radius);margin-bottom:1rem;border:1px solid var(--border)">
+          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem;font-weight:600;letter-spacing:0.05em">Hardware Configuration</div>
+          <div id="info-rig-specs" style="font-family:monospace;color:var(--primary-l);font-size:0.9rem;line-height:1.4"></div>
+        </div>
+        <div style="background:var(--surface2);padding:1rem;border-radius:var(--radius);border:1px solid var(--border)">
+          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;margin-bottom:0.5rem;font-weight:600;letter-spacing:0.05em">Games Available</div>
+          <div id="info-rig-games" style="color:var(--teal);font-size:0.95rem;line-height:1.4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Booking Modal -->
   <div class="modal-overlay hidden" id="book-modal">
     <div class="modal" style="max-width: 420px">
@@ -167,6 +190,7 @@
         bookingsMap,
         selection: pendingSel,
         mode: 'customer',
+        onRigInfo: (rig) => showRigInfo(rig),
         onSelect: (rigId, start, end) => {
           if (!rigId) {
             pendingSel = null;
@@ -230,6 +254,22 @@
     document.getElementById('modal-close').onclick  = closeModal;
     document.getElementById('modal-cancel').onclick = closeModal;
     document.getElementById('book-modal').onclick = e => { if (e.target.id === 'book-modal') closeModal(); };
+
+    // ── Rig Info Modal ───────────────────────────────────────────
+    window.showRigInfo = (rig) => {
+      const parts = (rig.specs || '').split('|||');
+      document.getElementById('info-rig-name').textContent = `${rig.name} (${rig.type})`;
+      document.getElementById('info-rig-specs').textContent = parts[0] ? parts[0].trim() : 'Standard Setup';
+      document.getElementById('info-rig-games').textContent = parts[1] ? parts[1].trim() : 'All standard games installed';
+      document.getElementById('rig-info-modal').classList.remove('hidden');
+      lucide.createIcons();
+    };
+
+    const closeInfoModal = () => {
+      document.getElementById('rig-info-modal').classList.add('hidden');
+    };
+    document.getElementById('info-modal-close').onclick = closeInfoModal;
+    document.getElementById('rig-info-modal').onclick = e => { if (e.target.id === 'rig-info-modal') closeInfoModal(); };
 
     document.getElementById('modal-confirm').onclick = async () => {
       const btn = document.getElementById('modal-confirm');

@@ -48,7 +48,10 @@
           <h1 class="page-title">Kitchen Display System</h1>
           <p class="page-subtitle">Live order feed — updates in real time</p>
         </div>
-        <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="display:flex;align-items:center;gap:1.5rem">
+          <button class="btn btn-primary" id="new-walkin-btn">
+            <i data-lucide="plus"></i> New Walk-in Order
+          </button>
           <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;color:var(--green)">
             <div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite"></div>
             Live
@@ -88,6 +91,36 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- Walk-in Order Modal -->
+  <div class="modal-overlay hidden" id="walkin-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">New Walk-In Order</span>
+        <button class="modal-close" id="close-walkin-modal"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-1">
+          <label class="form-label">Customer Name</label>
+          <input class="input" type="text" id="walkin-customer-name" placeholder="e.g. Aryan (Walk-in)" />
+        </div>
+        
+        <div style="max-height:350px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem" id="walkin-menu-list">
+          <div class="loading-state"><div class="spinner"></div></div>
+        </div>
+        
+        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:1.1rem;margin-top:0.5rem">
+          <span>Total:</span>
+          <span id="walkin-total" class="text-primary">₹0.00</span>
+        </div>
+        <p class="error-msg" id="walkin-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="cancel-walkin-btn">Cancel</button>
+        <button class="btn btn-primary" id="submit-walkin-btn"><i data-lucide="check"></i> Submit Order</button>
+      </div>
+    </div>
   </div>
 
   <style>
@@ -158,7 +191,7 @@
         const items   = Array.isArray(o.items) ? o.items : [];
         const delivBadge = o.delivery_type === 'rig_delivery'
           ? `<span class="badge badge-purple">🎮 Rig ${o.rig_number || '?'}</span>`
-          : `<span class="badge badge-teal">🥡 Pickup</span>`;
+          : `<span class="badge badge-teal">🥡 Pickup ${o.rig_number ? '· ' + o.rig_number : ''}</span>`;
         const advBtn = NEXT_STATUS[status]
           ? `<button class="btn btn-sm ${ADV_CLASS[status]}" onclick="advanceOrder(${o.id}, '${NEXT_STATUS[status]}')">${ADV_LABEL[status]}</button>`
           : `<span class="badge badge-green" style="margin-left:auto"><i data-lucide="check" style="width:10px;height:10px"></i> Done</span>`;
@@ -194,6 +227,114 @@
         await loadOrders();
       } catch (err) {
         showToast(err.message, 'error');
+      }
+    };
+
+    // ── Walk-In Orders logic ──────────────────────────────────────
+    let menuItems = [];
+    let walkinCart = {};
+
+    document.getElementById('new-walkin-btn').onclick = async () => {
+      document.getElementById('walkin-modal').classList.remove('hidden');
+      document.getElementById('walkin-customer-name').value = 'Walk-in';
+      document.getElementById('walkin-error').classList.remove('show');
+      walkinCart = {};
+      renderWalkinMenu();
+      if (menuItems.length === 0) {
+        const { data, error } = await supabase.from('menu_items').select('*').eq('available', true).order('category').order('name');
+        if (!error && data) {
+          menuItems = data;
+          renderWalkinMenu();
+        }
+      }
+    };
+
+    function renderWalkinMenu() {
+      const listEl = document.getElementById('walkin-menu-list');
+      if (menuItems.length === 0) {
+        listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+        return;
+      }
+      
+      let total = 0;
+      const html = menuItems.map(item => {
+        const qty = walkinCart[item.id] || 0;
+        total += qty * item.price;
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-weight:600;font-size:0.9rem">${item.name}</div>
+              <div style="font-size:0.8rem;color:var(--muted)">${fmtPrice(item.price)}</div>
+            </div>
+            <div class="qty-controls">
+              <button type="button" class="qty-btn" onclick="updateWalkinCart(${item.id}, -1)">-</button>
+              <span class="qty-val">${qty}</span>
+              <button type="button" class="qty-btn" onclick="updateWalkinCart(${item.id}, 1)">+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      listEl.innerHTML = html;
+      document.getElementById('walkin-total').textContent = fmtPrice(total);
+    }
+
+    window.updateWalkinCart = (itemId, change) => {
+      const current = walkinCart[itemId] || 0;
+      const next = current + change;
+      if (next >= 0) walkinCart[itemId] = next;
+      renderWalkinMenu();
+    };
+
+    const closeWalkinModal = () => document.getElementById('walkin-modal').classList.add('hidden');
+    document.getElementById('close-walkin-modal').onclick = closeWalkinModal;
+    document.getElementById('cancel-walkin-btn').onclick = closeWalkinModal;
+    
+    document.getElementById('submit-walkin-btn').onclick = async () => {
+      const btn = document.getElementById('submit-walkin-btn');
+      const errEl = document.getElementById('walkin-error');
+      errEl.classList.remove('show');
+      
+      const orderItems = [];
+      let total = 0;
+      for (const [id, qty] of Object.entries(walkinCart)) {
+        if (qty > 0) {
+          const item = menuItems.find(i => i.id == id);
+          if (item) {
+            orderItems.push({ id: item.id, name: item.name, price: item.price, qty });
+            total += item.price * qty;
+          }
+        }
+      }
+      
+      if (orderItems.length === 0) {
+        errEl.textContent = 'Please add at least one item.';
+        errEl.classList.add('show');
+        return;
+      }
+
+      setLoading(btn, true, 'Submitting...');
+      const custName = document.getElementById('walkin-customer-name').value.trim();
+      
+      try {
+        const { error } = await supabase.from('orders').insert({
+          user_id: profile.id, // admin user
+          items: orderItems,
+          total: total,
+          status: 'pending',
+          delivery_type: 'pickup',
+          rig_number: custName || 'Walk-in'
+        });
+        if (error) throw error;
+        showToast('Walk-in order created!', 'success');
+        closeWalkinModal();
+        await loadOrders(); // Manually reload orders to ensure UI updates immediately
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.add('show');
+      } finally {
+        setLoading(btn, false);
+        lucide.createIcons();
       }
     };
 

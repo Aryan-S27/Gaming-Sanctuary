@@ -98,16 +98,23 @@ export function renderTimelineGrid(container, options) {
     const row = document.createElement('div');
     row.className = 'timeline-row-new';
     
-    // Label
     const label = document.createElement('div');
     label.className = 'timeline-row-label-new sticky-col';
     label.innerHTML = `
-      <div style="line-height:1.2">
-        <strong style="font-size:0.8rem;text-transform:uppercase">${rig.name}</strong><br>
-        <span style="font-size:0.65rem;color:var(--muted)">${rig.type}</span>
+      <div style="display:flex;align-items:center;width:100%;gap:0.25rem">
+        <div style="line-height:1.2;flex:1;overflow:hidden">
+          <strong style="font-size:0.8rem;text-transform:uppercase;white-space:nowrap;text-overflow:ellipsis;display:block">${rig.name}</strong>
+          <span style="font-size:0.65rem;color:var(--muted)">${rig.type}</span>
+        </div>
+        ${options.onRigInfo ? `<button class="btn btn-icon btn-sm rig-info-btn" style="width:24px;height:24px;padding:0;flex-shrink:0" title="Rig Details"><i data-lucide="info"></i></button>` : ''}
       </div>
-      ${rig.status === 'maintenance' ? '<span class="badge badge-red" style="margin-left:auto;font-size:0.5rem;padding:0.1rem 0.3rem">MAINT</span>' : ''}
+      ${rig.status === 'maintenance' ? '<span class="badge badge-red" style="margin-top:0.2rem;font-size:0.5rem;padding:0.1rem 0.3rem">MAINT</span>' : ''}
     `;
+    
+    if (options.onRigInfo) {
+      const btn = label.querySelector('.rig-info-btn');
+      if (btn) btn.onclick = (e) => { e.stopPropagation(); options.onRigInfo(rig); };
+    }
     row.appendChild(label);
     
     // Track
@@ -335,4 +342,8 @@ export function renderTimelineGrid(container, options) {
 
   wrap.appendChild(grid);
   container.appendChild(wrap);
+
+  if (window.lucide) {
+    window.lucide.createIcons({ root: container });
+  }
 }

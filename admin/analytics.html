@@ -70,6 +70,7 @@
             <span id="date-display" style="font-weight:700;font-family:monospace;width:140px;text-align:center"></span>
             <button class="btn btn-icon" id="next-btn"><i data-lucide="chevron-right"></i></button>
             <button class="btn btn-ghost" id="today-btn"><i data-lucide="calendar"></i> Today</button>
+            <button class="btn btn-primary" id="export-btn" style="margin-left:0.5rem"><i data-lucide="download"></i> Export CSV</button>
           </div>
         </div>
       </div>
@@ -106,6 +107,11 @@
           </div>
           <div class="chart-container">
             <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="chart-container">
+            <canvas id="cafeChart"></canvas>
           </div>
         </div>
 
@@ -186,6 +192,16 @@
 
     let bookingsChartInstance = null;
     let revenueChartInstance = null;
+    let cafeChartInstance = null;
+    
+    let currentReportData = {
+      dateRange: '',
+      bookings: 0,
+      gamingRev: 0,
+      cafeRev: 0,
+      itemsSold: 0,
+      cafeItems: []
+    };
 
     // ── Load Data ────────────────────────────────────────────────
     async function loadData() {
@@ -207,28 +223,38 @@
 
       const startStr = startRange.toISOString().split('T')[0];
       const endStr = endRange.toISOString().split('T')[0];
+      
+      currentReportData.dateRange = currentMode === 'daily' ? startStr : (currentMode === 'monthly' ? startRange.toLocaleDateString('en-US', {month:'long', year:'numeric'}) : startRange.getUTCFullYear().toString());
 
-      const [rigsRes, bookingsRes, ordersRes] = await Promise.all([
+      const [rigsRes, bookingsRes, ordersRes, menuRes] = await Promise.all([
         supabase.from('rigs').select('id, name, price_per_hour'),
         supabase.from('bookings').select('rig_id, date, start_time, end_time')
           .gte('date', startStr).lte('date', endStr),
         supabase.from('orders').select('items, total, status')
           .gte('created_at', startRange.toISOString())
-          .lte('created_at', endRange.toISOString())
+          .lte('created_at', endRange.toISOString()),
+        supabase.from('menu_items').select('id, name')
       ]);
 
       if (rigsRes.error) { showToast(rigsRes.error.message, 'error'); return; }
       if (bookingsRes.error) { showToast(bookingsRes.error.message, 'error'); return; }
       if (ordersRes.error) { showToast(ordersRes.error.message, 'error'); return; }
+      if (menuRes.error) { showToast(menuRes.error.message, 'error'); return; }
 
       const allRigs = rigsRes.data || [];
       const bookings = bookingsRes.data || [];
       const orders = ordersRes.data || [];
+      const menuItems = menuRes.data || [];
 
       // Calculate Metrics & Prepare Chart Data
       let cafeRevenue = 0;
       let totalItemsSold = 0;
       const itemMap = {}; 
+      
+      // Initialize itemMap with all menu items so they show up even with 0 sales
+      menuItems.forEach(item => {
+        itemMap[item.name] = { name: item.name, qty: 0, revenue: 0 };
+      });
 
       // Café Data
       orders.forEach(o => {
@@ -332,8 +358,36 @@
         options: { ...chartOptions, plugins: { ...chartOptions.plugins, title: { display: true, text: 'Gaming Revenue per Rig (by Day)', color: '#fff' } } }
       });
 
-      // Render Table
+      // Render Table & Cafe Chart
       const itemsList = Object.values(itemMap).sort((a, b) => b.qty - a.qty);
+      
+      const cafeLabels = itemsList.map(i => i.name);
+      const cafeData = itemsList.map(i => i.qty);
+      
+      const baseColors = ['#10b981', '#06b6d4', '#7c3aed', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'];
+      const cafeColors = cafeData.map((_, i) => baseColors[i % baseColors.length]);
+
+      if (cafeChartInstance) cafeChartInstance.destroy();
+      cafeChartInstance = new Chart(document.getElementById('cafeChart'), {
+        type: 'bar',
+        data: { 
+          labels: cafeLabels, 
+          datasets: [{ 
+            label: 'Items Sold',
+            data: cafeData, 
+            backgroundColor: cafeColors,
+            borderRadius: 4
+          }] 
+        },
+        options: { 
+          ...chartOptions,
+          plugins: { 
+            ...chartOptions.plugins,
+            title: { display: true, text: 'Café Items Sold (Qty)', color: '#fff' },
+            legend: { display: false } // Hide legend since colors are self-explanatory on x-axis labels
+          }
+        }
+      });
       const el = document.getElementById('items-table-container');
 
       if (itemsList.length === 0) {
@@ -361,7 +415,35 @@
             </table>
           </div>`;
       }
+      
+      // Store report data for export
+      currentReportData.bookings = bookings.length;
+      currentReportData.gamingRev = gamingRevenue;
+      currentReportData.cafeRev = cafeRevenue;
+      currentReportData.itemsSold = totalItemsSold;
+      currentReportData.cafeItems = itemsList;
     }
+
+    document.getElementById('export-btn').onclick = () => {
+      let csv = `Gaming Sanctuary Report\nDate Range:,${currentReportData.dateRange}\n\n`;
+      csv += `OVERVIEW\nTotal Bookings,Total Gaming Revenue,Total Cafe Revenue,Total Cafe Items Sold\n`;
+      csv += `${currentReportData.bookings},${currentReportData.gamingRev},${currentReportData.cafeRev},${currentReportData.itemsSold}\n\n`;
+      csv += `CAFE SALES BREAKDOWN\nItem Name,Quantity Sold,Revenue\n`;
+      
+      currentReportData.cafeItems.forEach(item => {
+        csv += `"${item.name}",${item.qty},${item.revenue}\n`;
+      });
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Gaming_Sanctuary_Report_${currentReportData.dateRange.replace(/[^a-zA-Z0-9-]/g, '_')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    };
 
     await loadData();
   </script>
